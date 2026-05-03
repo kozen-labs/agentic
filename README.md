@@ -177,20 +177,9 @@ To add a new skill for an additional Kozen module:
 
 ## 📚 References
 
-[1] Kozen Engine. "@kozen/engine — Task Execution Framework." npm Registry, 2026.
-    https://www.npmjs.com/package/@kozen/engine
-
-[2] Kozen Labs. "Kozen Engine Wiki." GitHub, 2026.
-    https://github.com/kozen-labs/engine/wiki
-
-[3] Kozen Labs. "@kozen/secret." GitHub, 2026.
-    https://github.com/mongodb-industry-solutions/kozen-secret/wiki
-
-[4] Kozen Labs. "@kozen/trigger." GitHub, 2026.
-    https://github.com/mongodb-industry-solutions/kozen-trigger/wiki
-
-[5] Kozen Labs. "@kozen/iam-rectification." GitHub, 2026.
-    https://github.com/mongodb-industry-solutions/kozen-iam-rectification/wiki
-
-[6] Membrides Espinosa, Antonio. "APM — Agent Package Manager." GitHub, 2026.
-    https://github.com/kozen-labs/agentic
+- [@kozen/engine on npm](https://www.npmjs.com/package/@kozen/engine)
+- [Kozen Engine Wiki](https://github.com/kozen-labs/engine/wiki)
+- [@kozen/secret Wiki](https://github.com/kozen-labs/secret/wiki)
+- [@kozen/trigger Wiki](https://github.com/kozen-labs/trigger/wiki)
+- [@kozen/iam-rectification Wiki](https://github.com/kozen-labs/iam-rectification/wiki)
+- [APM — Agent Package Manager](https://github.com/kozen-labs/apm)

@@ -126,7 +126,7 @@ Every CLI invocation prints a diagnostic banner showing engine and loaded module
 ...............................................................................
 #    Module: 'secret' from '@kozen/secret' package
 #    Version: 1.0.4
-#    Wiki: https://github.com/mongodb-industry-solutions/kozen-secret/wiki
+#    Wiki: https://github.com/kozen-labs/secret/wiki
 ```
 
 Use this banner to verify version compatibility before filing bug reports.
