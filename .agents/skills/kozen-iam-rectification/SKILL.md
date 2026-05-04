@@ -26,8 +26,7 @@ certificate authentication.
 
 | Signal | Reference |
 |---|---|
-| IRectificationOption, IRectificationOptionX509, IRectificationResponse, rectify, IAMRectificationScram, IAMRectificationX509, SCRAM rectification, X509 rectification, iam-rectification:verify, iam-rectification:help, kozen_iam_rectify_scram, kozen_iam_rectify_x509, MCP IAM, programmatic IAM, library IAM, permissions extra missing present | `references/api.md` |
-| KOZEN_IAM_METHOD, KOZEN_IAM_URI_ENV, --uriEnv, --permissions, --method, --cert, --key, --ca, --host, environment variables IAM, CLI flags IAM, authentication methods, SCRAM-SHA-256 connection, X509 connection | `references/api.md` |
+| IAMRectificationModule, IIAMRectification, IAMRectificationScram, IAMRectificationX509, IRectificationOption, IRectificationOptionX509, IRectificationResponse, IRectificationScramArg, IRectificationX509Arg, all iam exports, rectify method, SCRAM rectification, X509 rectification, iam-rectification:verify, iam-rectification:help, kozen_iam_rectify_scram, kozen_iam_rectify_x509, MCP IAM tools, programmatic IAM, standalone IAM, library IAM, permissions extra missing present, URI resolution rules, X509 TLS context, audit permissions, CI/CD IAM gate, exit code missing permissions, KOZEN_IAM_METHOD, KOZEN_IAM_URI_ENV, --uriEnv, --permissions, --method, --cert, --key, --ca, --certPath, --caPath, --host, --app, --username, --password, --isCluster, --protocol, environment variables IAM, CLI flags IAM, default permissions list | `references/api.md` |
 
 ---
 

@@ -24,8 +24,9 @@ error recovery, and dependency injection into every handler call.
 
 | Signal | Reference |
 |---|---|
-| delegate, event handler, insert handler, update handler, delete handler, replace handler, default handler, on handler, ITriggerTools, assistant tools, flow tools, ITriggerDelegate, change stream event, operationType, trigger:start, ChangeStreamService, programmatic trigger, library trigger, trigger as dependency | `references/delegates.md` |
-| KOZEN_TRIGGER_FILE, KOZEN_TRIGGER_DATABASE, KOZEN_TRIGGER_COLLECTION, KOZEN_TRIGGER_URI, KOZEN_TRIGGER_KEY, ESM CJS delegate, delegateType, KOZEN_TRIGGER_DELEGATE_TYPE, .env trigger, trigger environment variables, trigger configuration, ITriggerOptions | `references/configuration.md` |
+| TriggerModule, ChangeStreamService, ChangeStreamService.start, ChangeStreamService.stop, ChangeStreamService.onChange, ChangeStreamService constructor, ITriggerDelegate, ITriggerOptions, ITriggerTools, all trigger exports, trigger public API, trigger class documentation, trigger:start CLI, trigger:help, trigger CLI flags, trigger MCP, standalone trigger, programmatic trigger, embed trigger, trigger as library, trigger Node.js, start change stream, stop change stream, dispatch rules, handler not found, flow ID trigger | `references/api.md` |
+| delegate file, event handler, insert handler, update handler, delete handler, replace handler, default handler, on handler, catch-all handler, ITriggerTools assistant db collection flow, resolve service in handler, write to MongoDB from handler, ESM delegate format, CJS delegate format, module.exports delegate, change event structure, updatedFields, fullDocument, operationType, change stream document | `references/delegates.md` |
+| KOZEN_TRIGGER_FILE, KOZEN_TRIGGER_DATABASE, KOZEN_TRIGGER_COLLECTION, KOZEN_TRIGGER_URI, KOZEN_TRIGGER_KEY, ESM CJS delegate type, delegateType, KOZEN_TRIGGER_DELEGATE_TYPE, .env trigger, trigger environment variables, trigger configuration, ITriggerOptions mdb, PM2 trigger, systemd trigger, Docker trigger, deployment patterns | `references/configuration.md` |
 
 ---
 

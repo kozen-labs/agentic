@@ -32,6 +32,7 @@ spans more than one domain.
 | Secrets (AWS Secrets Manager, MongoDB CSFLE), `secret:get`, `secret:set`, ISecretManager, MDB_MASTER_KEY | `kozen-secret` |
 | MongoDB Change Stream triggers, delegate files, insert/update/delete handlers, ITriggerTools, `trigger:start` | `kozen-trigger` |
 | MongoDB IAM, permission validation, SCRAM, X.509, IRectificationResponse, `iam-rectification:verify` | `kozen-iam-rectification` |
+| write wiki, create wiki, module wiki, GitHub wiki, documentation wiki, kozen docs, wiki page, Home.md, Get-Started.md, POLICY.md, navigation footer, wiki structure, publish wiki, docs folder | `kozen-wiki-writer` |
 
 ---
 

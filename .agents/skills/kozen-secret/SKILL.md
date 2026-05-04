@@ -24,8 +24,8 @@ MongoDB Client-Side Field Level Encryption (CSFLE), allowing backend switching v
 
 | Signal | Reference |
 |---|---|
-| ISecretManager, SecretManager, SecretManagerAWS, SecretManagerMDB, resolve secret, save secret, secret:get, secret:set, secret:metadata, kozen_secret_select, kozen_secret_save, MCP secret tool, CLI secret command, secret driver, aws driver, mdb driver | `references/api.md` |
-| KOZEN_SM_KEY, KOZEN_SM_VAL, KOZEN_SM_DRIVER, KOZEN_SM_ALT, AWS_ACCESS_KEY_ID, MDB_MASTER_KEY, CSFLE, environment variables secret, configure secret module | `references/configuration.md` |
+| SecretModule, ISecretManager, SecretManager, SecretManagerAWS, SecretManagerMDB, ISecretManagerOptions, ISecretArgs, resolve secret, save secret, configure secret, secret:get, secret:set, secret:metadata, secret:help, kozen_secret_select, kozen_secret_save, MCP secret tool, CLI secret command, secret driver, aws driver, mdb driver, createClient AWS, initClient MDB, createDataKey, getKmsProviders, getKeyVaultNamespace, masterKey, SecretManager constructor, standalone secret, library secret, embed secret, secret in delegate, secret in trigger, secret IoC pattern | `references/api.md` |
+| KOZEN_SM_KEY, KOZEN_SM_VAL, KOZEN_SM_DRIVER, KOZEN_SM_ALT, AWS_ACCESS_KEY_ID, MDB_MASTER_KEY, CSFLE key generation, environment variables secret, configure secret module, .env secret, driver comparison, mdb vs aws, security best practices secret | `references/configuration.md` |
 
 ---
 
