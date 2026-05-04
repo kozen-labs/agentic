@@ -20,12 +20,14 @@ specific domain. Each skill in this repository covers one package in the Kozen e
 | `kozen-secret` | `@kozen/secret` | Secret management: AWS Secrets Manager and MongoDB Client-Side Field Level Encryption (CSFLE) |
 | `kozen-trigger` | `@kozen/trigger` | Self-hosted MongoDB Change Stream triggers: delegate files, event handlers, configuration |
 | `kozen-iam-rectification` | `@kozen/iam-rectification` | MongoDB Identity and Access Management (IAM) permission validation for SCRAM and X.509 auth |
+| `kozen-wiki-writer` | (meta) | Wiki authoring guide: publication modes, format conventions, page templates, source analysis checklist, licence and disclaimer structure |
 
 ### Agent
 
-The `kozen` agent (`kozen.md`) routes questions across all four skills automatically. Load
-it when you want AI assistance on any Kozen topic without selecting a skill manually. The
-agent identifies the relevant domain from the question and activates the matching skill.
+The `kozen` agent (`kozen.md`) routes questions across all four skills automatically — plus
+the `kozen-wiki-writer` skill when the user wants to produce wiki documentation. Load it
+when you want AI assistance on any Kozen topic without selecting a skill manually. The agent
+identifies the relevant domain from the question and activates the matching skill.
 
 ---
 
