@@ -39,8 +39,8 @@ the issue section of `references/issues.md` can be extracted then.
 |---|---|
 | publication mode, GitHub wiki, docs folder, tmp/wiki, where to put wiki files, git wiki repo, github pages, docs vs wiki, ask user publication, publish kozen wiki | `references/publication-modes.md` |
 | file naming, navigation footer, previous next links, emoji heading, heading structure, link format, absolute URL wiki, code block convention, table convention, tone voice, emoji mapping, page order, PascalCase hyphen | `references/conventions.md` |
-| what to document, page types, Home page minimal, Home README parity, README.md same as Home, npm readme, pypi readme, Get-Started page, Configuration page, API page, CLI page, MCP page, Delegate page, POLICY page, licence page, disclaimer page, escalated content, progressive disclosure, no duplication rule, bibliography section, references section, entry point analysis, exported classes wiki, src/index.ts wiki | `references/content-structure.md` |
-| GitHub Issues, issue template, create issue, write issue, issue structure, issue title, issue description, bug report, feature request, issue location, consequences, reproduction steps, possible solutions, tmp/issues, docs/issues, issue publication mode, standardised issues, project management docs, source audit, code review findings, identify problems, detect issues, improve module, audit before writing | `references/issues.md` |
+| what to document, page types, Home page minimal, Home README parity, README.md same as Home, npm readme, pypi readme, Get-Started page, Configuration page, API page, CLI page, MCP page, Delegate page, POLICY page, licence page, disclaimer page, escalated content, progressive disclosure, no duplication rule, bibliography section, references section, entry point analysis, exported classes wiki, src/index.ts wiki, source analysis checklist, what to read before writing, practical code examples, runnable snippet, example per page, when to include examples, complete example, realistic example, TypeScript example | `references/content-structure.md` |
+| GitHub Issues, issue template, create issue, write issue, issue structure, issue title, issue description, bug report, feature request, issue location, consequences, reproduction steps, possible solutions, tmp/issues, docs/issues, issue publication mode, standardised issues, project management docs, source audit findings, code review findings, classify findings, identify problems, detect issues, improve module | `references/issues.md` |
 
 ---
 
@@ -122,6 +122,7 @@ Ask all three questions before generating any file. Defaults are shown in parent
 **Do:**
 - Audit the source code first — read `src/index.ts`, `src/docs/*.txt`, and `src/configs/*.json` before writing a single line of documentation.
 - Convert every finding from the audit into a standardised issue file (see `references/issues.md`) and present it to the user before writing wiki pages.
+- Include practical code examples on every page that requires them (see the per-page table in `references/content-structure.md`). Examples must be complete, runnable, and use realistic values.
 - Write POLICY.md first — every Home.md links to it.
 - Write Home.md last — it links to every other page.
 - Keep Home.md minimal: high-level overview, key features, one install command, links. No API details.

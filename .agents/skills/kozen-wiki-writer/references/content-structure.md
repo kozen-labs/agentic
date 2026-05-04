@@ -114,6 +114,62 @@ incorrect placement.
 
 ---
 
+## Practical code examples
+
+Code examples are the single most valuable element in technical documentation. A developer
+reading the wiki must be able to copy a snippet and run it in under two minutes. Apply these
+rules on every page that includes code.
+
+### Rules for every example
+
+- **Complete and runnable**: no `...` ellipsis in executable paths, no missing imports, no
+  unexplained prerequisites. If a snippet requires a prior step (install, env var, running
+  server), say so in a sentence before the block.
+- **Realistic values** (see `references/conventions.md`): use `mydb`, `orders`, `appUser`,
+  `MY_SECRET_KEY` — never `foo`, `bar`, `test`, or `example`.
+- **Labelled with a file comment**: the first line of each snippet tells the reader which
+  file it belongs to.
+  ```typescript
+  // src/services/MyService.ts
+  ```
+- **Language tag on every block**: `typescript`, `bash`, `json`, `yaml` — never a plain
+  fenced block.
+- **Expected output where it adds clarity**: show what the terminal prints after a CLI
+  command. A reader should not need to run code to know whether it worked.
+- **TypeScript first**: use TypeScript for all programmatic examples. Add a CommonJS
+  equivalent only when the difference in syntax matters for the reader.
+
+### Per-page example requirements
+
+| Page | Required | Recommended |
+|---|---|---|
+| `Home.md` | `npm install` command + one minimal first command | — |
+| `Get-Started.md` | Complete `.env` file, first CLI invocation, expected output | One TypeScript quickstart snippet |
+| `Configuration.md` | Complete `.env` covering the common case, `config.json` snippet | Per-driver comparison blocks |
+| CLI page | Full `npx kozen` invocation per action, one end-to-end shell sequence | Script combining multiple actions |
+| MCP page | Full `mcpServers` JSON block (VS Code + Claude Desktop variants), 2–3 LLM prompt examples | — |
+| API / Delegate page | Complete TypeScript import block, programmatic usage with Kozen IoC, standalone usage without Kozen, ESM and CJS delegate variants | Error handling pattern, service resolution via `tools.assistant` |
+| `Kozen-Integration.md` | `--moduleLoad` CLI flag, `KOZEN_MODULE_LOAD` env var, two-module composition | IoC token override in `ioc.json` |
+| `POLICY.md` | — | — |
+
+"Required" means the page must not be published without that example.
+"Recommended" means include it when the scenario is relevant for the module.
+
+### What makes a Kozen example practical
+
+A practical example answers "what do I run / write to accomplish X?" — not "what does the
+API look like in the abstract." Test each example against this checklist:
+
+- [ ] Can a developer copy it directly and run it without changes other than credentials?
+- [ ] Does it show a realistic Kozen use case (not a unit-test fixture or a hello-world stub)?
+- [ ] Does it include the exact `--moduleLoad`, `--action`, and `--envFile` flags for CLI examples?
+- [ ] Does it show the expected result (return value, log line, or output file)?
+- [ ] If it uses a TypeScript interface, does it show the actual field values, not just the type?
+
+If the answer to any item is no, revise the example before publishing the page.
+
+---
+
 ## Page type templates
 
 ### Home.md = README.md parity rule
@@ -125,11 +181,13 @@ wiki landing page. A developer discovering the module through any of those surfa
 the same high-level overview and be able to navigate to the full documentation from there.
 
 **Workflow:**
-1. Write `Home.md` first, following the template below.
-2. Copy the finished content verbatim into `README.md`.
-3. Replace any GitHub wiki links in `README.md` with the same absolute wiki URLs — they work
-   from npm and GitHub alike.
-4. When either file changes, sync the other immediately.
+1. Write all other wiki pages first — `POLICY.md` through `Kozen-Integration.md`.
+2. Write `Home.md` last, once every other page is complete and can be linked to.
+3. Copy the finished `Home.md` content verbatim into `README.md`.
+4. Replace any wiki-relative links in `README.md` with the same absolute GitHub wiki URLs
+   already used in `Home.md` — in practice no change is needed if Mode A conventions were
+   followed throughout.
+5. When either file changes in the future, sync the other immediately.
 
 **What must stay identical:**
 - Module name and one-sentence definition
@@ -354,15 +412,29 @@ If no banner exists, omit the image entirely. Never use a placeholder image.
 
 ## Checklist before marking a wiki complete
 
-- [ ] Every page has a navigation footer with correct Previous/Next links
-- [ ] Home.md has the disclaimer blockquote linking to POLICY.md
-- [ ] POLICY.md exists and includes licence (from package.json `license` field)
-- [ ] All internal links use absolute GitHub wiki URLs (Mode A) or relative paths (Mode B)
-- [ ] No content is duplicated across pages — check for copy-pasted paragraphs
+**Source audit (must be done before writing):**
+- [ ] Source code was audited (`src/index.ts`, `src/docs/*.txt`, `src/configs/*.json`, `src/services/*.ts`, `src/controllers/*.ts`) and all findings were converted to issue files following `references/issues.md`
+- [ ] Issue files were presented to the user and accepted or dismissed before writing any wiki page
+
+**Content:**
 - [ ] All API signatures were verified against `src/index.ts`
 - [ ] All CLI action names were verified against the controller's public methods
 - [ ] All env var names were verified against the `src/docs/*.txt` help file
 - [ ] `src/configs/mcp.json` existence was checked before writing an MCP page
+- [ ] No content is duplicated across pages — check for copy-pasted paragraphs
+- [ ] Every page in the "Required" column of the practical code examples table has its example
+- [ ] Every code example is complete, runnable, and uses realistic values (no `foo`/`bar`/`test`)
+
+**Format:**
+- [ ] Every page has a navigation footer with correct Previous/Next links
 - [ ] Emojis appear only on H1 and H2 headings
+- [ ] All internal links use absolute GitHub wiki URLs (Mode A) or relative paths (Mode B)
 - [ ] Every page that cites an external resource has a References section
+
+**Legal:**
+- [ ] POLICY.md exists and includes licence (from package.json `license` field)
 - [ ] POLICY.md licence matches the `license` field in `package.json`
+- [ ] Home.md has the disclaimer blockquote linking to POLICY.md
+
+**Sync:**
+- [ ] `README.md` content is identical to `Home.md` after Home.md was completed last
