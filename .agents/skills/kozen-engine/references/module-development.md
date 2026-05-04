@@ -65,61 +65,154 @@ Every Kozen module follows this layout:
 
 ## 2. package.json
 
+The template below matches the patterns used across `@kozen/trigger`, `@kozen/secret`, and
+`@kozen/iam-rectification`. Annotations in comments explain every field and flag.
+
 ```json
 {
   "name": "@scope/my-module",
   "version": "1.0.0",
   "description": "Kozen module that provides [domain] capabilities",
-  "main": "dist/index.js",
+
+  "main":  "dist/index.js",
   "types": "dist/index.d.ts",
+
   "files": [
     "dist/*",
     "LICENSE",
     "README.md"
   ],
+
   "publishConfig": {
     "access": "public"
   },
+
   "scripts": {
-    "build":    "tsc && npm run copy:txt",
-    "copy:txt": "copyfiles -u 1 src/**/*.txt dist/",
-    "start":    "npx kozen --config=cfg/config.json",
-    "dev":      "ts-node node_modules/@kozen/engine/dist/bin/kozen.js",
-    "mcp:dev":  "npx -y @modelcontextprotocol/inspector npx -y ts-node node_modules/@kozen/engine/dist/bin/kozen.js --type=mcp",
-    "mcp:start":"ts-node node_modules/@kozen/engine/dist/bin/kozen.js --type=mcp"
+    "build":        "tsc && npm run copy:txt",
+    "copy:txt":     "copyfiles -u 1 src/**/*.txt dist/",
+    "test":         "echo \"Error: no test specified\" && exit 1",
+    "start":        "npm run bin:kozen:js -- --config=kozen.js.json",
+    "dev":          "npm run bin:kozen:ts -- --config=kozen.ts.json",
+    "mcp:start":    "npm run bin:kozen:ts -- --type=mcp",
+    "mcp:dev":      "npx -y @modelcontextprotocol/inspector npm run bin:kozen:ts -- --type=mcp",
+    "bin:kozen:ts": "ts-node node_modules/@kozen/engine/dist/bin/kozen.js",
+    "bin:kozen:js": "npx kozen",
+    "versions":     "npm view @scope/my-module versions",
+    "publish":      "npm run build && npm publish",
+    "clean":        "rm -rf dist"
   },
+
   "keywords": ["kozen", "mongodb", "my-domain"],
-  "author": "Your Name",
-  "license": "MIT",
+  "author":   "Your Name or Organisation",
+  "license":  "MIT",
+
   "engines": { "node": ">=18" },
+
   "homepage": "https://github.com/your-org/my-module/wiki",
   "bugs":     { "url": "https://github.com/your-org/my-module/issues" },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/your-org/my-module.git"
+    "url":  "git+https://github.com/your-org/my-module.git"
   },
+
   "dependencies": {
-    "@kozen/engine": "^1.1.15",
-    "zod": "^4.1.0"
+    "@kozen/engine": "^1.1.15"
   },
+
   "devDependencies": {
-    "@types/node": "^18.0.0",
-    "copyfiles": "^2.4.1",
-    "ts-node":   "^10.9.0",
-    "typescript":"^5.0.0"
+    "@types/node": "^18.19.0",
+    "copyfiles":   "^2.4.1",
+    "cross-env":   "^7.0.3",
+    "ts-node":     "^10.9.0",
+    "tslint":      "^5.8.0",
+    "typescript":  "^5.0.0"
   }
 }
 ```
 
-Key rules:
-- `@kozen/engine` is a **runtime** dependency — the module's source imports from it at
-  runtime, so it must be present when the module executes.
-- `"files": ["dist/*"]` limits the published tarball to compiled output only. `src/` is
-  never published.
-- `publishConfig.access: "public"` is required for scoped packages on the public registry.
-- The `copy:txt` script copies `src/**/*.txt` to `dist/` after TypeScript compilation.
-  Without this, the `FileService` cannot find the help documentation at runtime.
-- The `dev` script runs `kozen.js` via `ts-node`, enabling development without a build step.
+### Key rules
+
+| Field / script | Rule |
+|---|---|
+| `main` / `types` | Must point to `dist/index.js` / `dist/index.d.ts` (see rootDir rule in section 3) |
+| `files` | `"dist/*"` publishes only compiled output — `src/`, `cfg/`, and `.env` files are excluded |
+| `publishConfig.access` | `"public"` is required for all `@scope/*` packages; without it npm defaults to private |
+| `@kozen/engine` in `dependencies` | Must be a runtime `dependency`, not `devDependency`; it is imported at module execution time |
+| `zod` | Add to `dependencies` only if the module defines MCP tools (Zod schemas for `inputSchema`); omit otherwise |
+| `cross-env` | Add to `devDependencies` when scripts need cross-platform environment variable assignment |
+| `tslint` | Present in all existing Kozen modules (legacy linter); add for consistency. `eslint` is the modern replacement — use either, but be consistent within the project |
+| `@types/node` version | Pin to the same major as `engines.node`: `node >=18` → `@types/node ^18.x.x` |
+| `engines.node` | Set to `">=18"` — the minimum Node.js version Kozen supports |
+| `test` script | Always include; use the placeholder if there are no tests yet — `npm test` must not crash |
+| `clean` script | `rm -rf dist` — useful for CI and before a fresh build |
+
+### Config file naming convention
+
+Kozen modules conventionally ship two config files at the project root for local development:
+
+| File | Used by | Purpose |
+|---|---|---|
+| `kozen.js.json` | `npm start` (compiled run) | Config for running the module with the published `npx kozen` binary |
+| `kozen.ts.json` | `npm run dev` (ts-node run) | Config for running during development via `ts-node` |
+
+Both files are kozen config files (same schema as `cfg/config.json`). The split exists because
+`module` path resolution differs between the compiled `dist/` and the source `src/` trees during
+development. Neither file should be committed with credentials.
+
+The `start` and `dev` scripts pass the config file via `-- --config=<file>`:
+
+```bash
+# Pass args to a script via npm (the '--' separator is required)
+npm run start               # → npx kozen --config=kozen.js.json
+npm run dev                 # → ts-node ...kozen.js --config=kozen.ts.json
+npm run dev -- --action=my-module:help   # add extra flags at call time
+```
+
+When no config file is needed (the action is specified entirely via CLI flags), use:
+
+```bash
+npx kozen --moduleLoad=@scope/my-module --action=my-module:help
+```
+
+### Entry point paths and the rootDir inference rule
+
+The `main` and `types` fields must match the compiled output path. That path is controlled by
+how TypeScript infers `rootDir` from the `include` patterns:
+
+| `include` in tsconfig | Inferred `rootDir` | `src/index.ts` compiles to | `main` field |
+|---|---|---|---|
+| `["src/**/*.ts"]` — all modules | `src/` | `dist/index.js` | `"dist/index.js"` |
+| `["src/**/*.ts", "bin/**/*.ts"]` — engine only | `.` (project root) | `dist/src/index.js` | `"dist/src/index.js"` |
+
+**Rule for modules:** only include `src/**/*.ts`. Never add `bin/**/*.ts` to a module's
+tsconfig — Kozen modules do not define their own CLI binary. Adding `bin/**/*.ts` shifts the
+output path to `dist/src/index.js` and breaks the `main` field.
+
+This is also why the `copy:txt` script differs between the engine and every other module:
+
+| Package | `copy:txt` script | Why |
+|---|---|---|
+| `@kozen/engine` | `copyfiles -u 1 src/**/*.txt dist/src` | rootDir is `.`, docs land in `dist/src/docs/` |
+| All modules | `copyfiles -u 1 src/**/*.txt dist/` | rootDir is `src/`, docs land in `dist/docs/` |
+
+### npm scripts reference
+
+All scripts are part of the template above. Reference table:
+
+| Script | Command | Purpose |
+|---|---|---|
+| `build` | `tsc && npm run copy:txt` | TypeScript compilation + copy `.txt` docs to `dist/` |
+| `copy:txt` | `copyfiles -u 1 src/**/*.txt dist/` | Copy help docs; also called by `build` |
+| `test` | `echo "Error: no test specified" && exit 1` | Placeholder until tests exist; prevents `npm test` from silently succeeding |
+| `start` | `npm run bin:kozen:js -- --config=kozen.js.json` | Run the compiled module with the published `kozen` binary |
+| `dev` | `npm run bin:kozen:ts -- --config=kozen.ts.json` | Run via `ts-node` — no build step needed |
+| `mcp:start` | `npm run bin:kozen:ts -- --type=mcp` | Start the MCP server via `ts-node` |
+| `mcp:dev` | `npx -y @modelcontextprotocol/inspector npm run bin:kozen:ts -- --type=mcp` | Open MCP Inspector UI at `localhost:5173` for debugging |
+| `bin:kozen:ts` | `ts-node node_modules/@kozen/engine/dist/bin/kozen.js` | Engine bin via `ts-node` — base script for `dev` and `mcp:start` |
+| `bin:kozen:js` | `npx kozen` | Published `kozen` binary — base script for `start` |
+| `versions` | `npm view @scope/my-module versions` | List all published versions — run before bumping |
+| `publish` | `npm run build && npm publish` | Build then publish in one step |
+| `clean` | `rm -rf dist` | Wipe compiled output before a clean build |
 
 ### Why package.json is read at module construction time
 
@@ -183,26 +276,58 @@ try {
 ```json
 {
   "compilerOptions": {
+    "strict": true,
     "target": "ES2020",
     "module": "CommonJS",
     "lib": ["ES2020"],
     "outDir": "dist",
-    "rootDir": ".",
+    "moduleResolution": "node",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "strict": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node"
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "pretty": true,
+    "typeRoots": ["./node_modules/@types"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }
 ```
 
-`resolveJsonModule: true` is required so that `import cli from './configs/cli.json'` works
-in the module entry point.
+Key compiler options for Kozen modules:
+
+| Option | Value | Why |
+|---|---|---|
+| `module` | `"CommonJS"` | All Kozen modules publish CJS for Node.js compatibility |
+| `target` | `"ES2020"` | Supports async/await, optional chaining, and modern JS natively |
+| `declaration` | `true` | Generates `.d.ts` files consumed by TypeScript projects that import the module |
+| `declarationMap` | `true` | Maps `.d.ts` declarations back to source — enables "Go to definition" in IDEs |
+| `resolveJsonModule` | `true` | Required for `import ioc from './configs/ioc.json'` in `src/index.ts` |
+| `skipLibCheck` | `true` | Prevents type errors in `node_modules/@types` from blocking your build |
+| `experimentalDecorators` | `true` | Required if any service uses class decorators (some IoC patterns use them) |
+| `emitDecoratorMetadata` | `true` | Required alongside `experimentalDecorators` for runtime reflection |
+| `esModuleInterop` | `true` | Enables `import dotenv from 'dotenv'` (default import from CJS modules) |
+| `allowSyntheticDefaultImports` | `true` | Companion to `esModuleInterop`; silences type errors on CJS default imports |
+| `forceConsistentCasingInFileNames` | `true` | Prevents case-sensitivity bugs when developing on macOS/Windows and deploying on Linux |
+| `noImplicitReturns` | `true` | Catches missing `return` statements in async methods |
+| `paths` | `{ "@/*": ["./src/*"] }` | Enables `@/services/MyService` import aliases within the module source |
+
+**Critical: `include` must be `["src/**/*.ts"]` only.**
+Do not add `bin/**/*.ts`. Modules have no `bin/` directory. Including it would shift the
+inferred `rootDir` from `src/` to `.`, causing `src/index.ts` to compile to `dist/src/index.js`
+instead of `dist/index.js` — breaking the `main` field in `package.json`.
 
 ---
 
@@ -752,49 +877,250 @@ Examples:
 # Install dependencies
 npm install
 
-# Build (TypeScript + copy .txt files)
+# Build: TypeScript compilation + copy .txt help files to dist/
 npm run build
 
-# Test as CLI (ts-node, no build required during development)
-npm run dev -- --action=my-module:help
-npm run dev -- --action=my-module:execute --key=test-key
+# Verify the dist/ structure after build
+# Expected for a module named 'trigger' with alias 'trigger':
+# dist/
+# ├── index.js          ← compiled src/index.ts
+# ├── index.d.ts        ← TypeScript declarations
+# ├── index.js.map
+# ├── controllers/
+# ├── services/
+# ├── models/
+# ├── configs/
+# └── docs/
+#     └── trigger.txt   ← copied by copy:txt — MUST exist
 
-# Test MCP (opens MCP Inspector at localhost:5173)
+# Test as CLI during development (ts-node, no build step)
+npm run dev -- --moduleLoad=. --action=my-module:help
+npm run dev -- --moduleLoad=. --action=my-module:execute --key=myTestKey
+
+# Test MCP (opens MCP Inspector UI at localhost:5173)
 npm run mcp:dev
 
-# Link locally to test as a node_modules package in another project
+# Test as an installed package in another project
 npm link
 cd /path/to/host-project
 npm link @scope/my-module
 npx kozen --moduleLoad=@scope/my-module --action=my-module:help
 ```
 
+Checklist after `npm run build`:
+
+- [ ] `dist/index.js` exists (compiled entry point)
+- [ ] `dist/index.d.ts` exists (TypeScript declarations)
+- [ ] `dist/docs/<alias>.txt` exists (help file copied by `copy:txt`)
+- [ ] `dist/` does NOT contain `src/` directory (wrong rootDir — fix tsconfig `include`)
+- [ ] `dist/` does NOT contain `node_modules/` or `*.test.js`
+
 ---
 
-## 13. Publishing to npm
+## 13. The engine binary — why modules do not define their own `bin`
+
+`@kozen/engine` is the only package in the Kozen ecosystem that defines a CLI binary. All
+other modules are loaded by that binary at runtime via `--moduleLoad`.
+
+### How the engine binary works
+
+`bin/kozen.ts` (compiled to `dist/bin/kozen.js`) is the process entry point. It:
+
+1. Parses `process.argv` via `KzApp.extract()`.
+2. Reads `KOZEN_APP_TYPE` (or `--type`) to determine CLI vs MCP.
+3. Loads `.env` via `dotenv` (unless `KOZEN_SKIP_DOTENV=true` or type is `mcp`).
+4. Calls `KzApp.init()` to build the config.
+5. Calls `KzApp.register()` which loads each module listed in `--moduleLoad`.
+6. Resolves the application (`CLIApplication` or `MCPApplication`) from the IoC container.
+7. Calls `app.start(args)` which dispatches to the correct controller method.
+
+The `#!/usr/bin/env node` shebang on line 1 of the compiled `.js` file makes the file
+directly executable on Unix systems without a `node` prefix.
+
+### Why modules do NOT have their own `bin`
+
+A Kozen module is a **plugin**, not a standalone application. Its entry point is
+`src/index.ts` which exports a `KzModule` subclass. The module has no `main()` function —
+it only exposes a dependency map that the engine registers in its IoC container.
+
+Defining a `bin` field in a module's `package.json` would:
+- Add `bin/**/*.ts` to `include`, shifting the tsconfig rootDir and breaking `dist/index.js`
+- Duplicate the engine's bootstrap logic in every module
+- Create a separate `npx @scope/my-module` command that would not know how to load other
+  modules alongside it
+
+Instead, users always invoke modules through the engine binary:
 
 ```bash
-npm run build          # compile + copy .txt files
+# CORRECT: use the engine binary and load the module
+npx kozen --moduleLoad=@scope/my-module --action=my-module:execute --key=VALUE
 
-npm pack --dry-run     # verify tarball contents — must not include src/ or node_modules/
+# WRONG: there is no separate binary for modules
+npx @scope/my-module --action=execute  # will fail — no bin defined
+```
 
-npm publish --access public   # first publish (scoped package)
+### The `bin` field in `package.json` — engine only
 
-# Subsequent publishes: bump version first
-npm version patch             # 1.0.0 → 1.0.1
+```json
+// @kozen/engine package.json — the only package with a bin field
+{
+  "bin": {
+    "kozen": "dist/bin/kozen.js"
+  }
+}
+```
+
+When `@kozen/engine` is installed globally (`npm install -g @kozen/engine`) or as a
+dependency, npm symlinks `dist/bin/kozen.js` as the `kozen` executable. This is why
+`npx kozen` works in any project that has `@kozen/engine` as a dependency.
+
+**Never add a `bin` field to a Kozen module's `package.json`.**
+
+---
+
+## 14. Publishing to npm
+
+### Prerequisites
+
+```bash
+# One-time: authenticate with npm
+npm login
+# Enter: username, password, email, OTP (if 2FA enabled)
+
+# Verify authentication
+npm whoami
+# → your-npm-username
+```
+
+For CI/CD pipelines, use a publish token in `~/.npmrc` instead of interactive login:
+
+```
+# ~/.npmrc  (or .npmrc in the project root — do not commit if it contains a token)
+//registry.npmjs.org/:_authToken=${NPM_TOKEN}
+```
+
+Set `NPM_TOKEN` as an environment secret in GitHub Actions / GitLab CI.
+
+### Pre-publish checklist
+
+Run all of these before executing `npm publish`:
+
+```bash
+# 1. Build cleanly
+npm run build
+
+# 2. Inspect the tarball without publishing
+npm pack --dry-run
+```
+
+Expected `npm pack --dry-run` output for a module:
+
+```
+npm notice === Tarball Contents ===
+npm notice 1.2kB  README.md
+npm notice 1.0kB  LICENSE
+npm notice 3.4kB  dist/index.js
+npm notice 2.1kB  dist/index.d.ts
+npm notice 1.8kB  dist/index.js.map
+npm notice  512B  dist/docs/my-module.txt   ← MUST appear
+npm notice 4.2kB  dist/services/MyService.js
+npm notice ...
+npm notice === Tarball Details ===
+npm notice name:          @scope/my-module
+npm notice version:       1.0.0
+npm notice filename:      scope-my-module-1.0.0.tgz
+npm notice total files:   18
+```
+
+**The tarball must NOT contain:**
+- `src/` directory — means `"files"` is wrong or not set
+- `node_modules/` — means `.npmignore` or `"files"` is wrong
+- `cfg/config.json` with real credentials — check before publishing
+- `*.env` files
+
+**The tarball MUST contain:**
+- `dist/index.js` and `dist/index.d.ts`
+- `dist/docs/<alias>.txt` — without this, `help()` prints nothing
+- `README.md` and `LICENSE`
+
+### First publish of a scoped package
+
+```bash
+# Scoped packages (@kozen/*, @scope/*) default to private — must pass --access public
+npm publish --access public
+
+# Or use the publishConfig in package.json (already set) and run without the flag:
 npm publish
 ```
 
-After publishing, verify installation in a clean environment:
+The `publishConfig.access: "public"` in `package.json` removes the need for `--access public`
+on every publish. Verify it is set before the first publish.
+
+### Subsequent publishes — version bump strategy
+
+Kozen follows semantic versioning (`MAJOR.MINOR.PATCH`):
+
+| Change type | Version bump | Command |
+|---|---|---|
+| Bug fix, no API change | Patch: `1.0.0 → 1.0.1` | `npm version patch` |
+| New feature, backwards-compatible | Minor: `1.0.0 → 1.1.0` | `npm version minor` |
+| Breaking API change | Major: `1.0.0 → 2.0.0` | `npm version major` |
+| Pre-release / RC | Pre-release: `1.0.0 → 1.1.0-rc.0` | `npm version preminor` |
 
 ```bash
-npm install @scope/my-module
+# Standard patch release
+npm version patch          # bumps package.json version and creates a git tag
+npm run build              # rebuild with the new version embedded in package.json
+npm publish                # publish the new version
+
+# Or in one step using the publish script:
+npm version patch && npm run publish
+```
+
+`npm version` automatically:
+1. Updates `package.json` version
+2. Commits the change with message `v1.0.1`
+3. Creates a git tag `v1.0.1`
+
+Push the tag after publishing:
+```bash
+git push && git push --tags
+```
+
+### Post-publish verification
+
+```bash
+# Verify the published version is visible on npm
+npm view @scope/my-module versions
+# → [ '1.0.0', '1.0.1' ]
+
+# Install in a clean temporary directory to verify the package works end-to-end
+mkdir /tmp/kozen-test && cd /tmp/kozen-test
+npm init -y
+npm install @kozen/engine @scope/my-module
 npx kozen --moduleLoad=@scope/my-module --action=my-module:help
 ```
 
+If `help()` prints the module description, all three things are verified:
+1. The package installed correctly
+2. The `dist/docs/<alias>.txt` file was included in the tarball
+3. The module entry point and IoC registration work
+
+### `publish` script in package.json
+
+The `"publish": "npm run build && npm publish"` script in `package.json` runs the build
+before every publish, preventing accidental publication of stale compiled output:
+
+```bash
+npm run publish    # builds then publishes — use this for all releases
+```
+
+**Do not use `npm run publish` in CI/CD** if your pipeline already runs the build step
+separately — it would build twice. Use `npm publish` directly in that case.
+
 ---
 
-## 14. Complete minimal module example
+## 15. Complete minimal module example
 
 The smallest valid Kozen module — one service, one CLI controller, no MCP:
 
@@ -936,17 +1262,62 @@ npx kozen --moduleLoad=@scope/greeter --action=greeter:greet --name=Kozen
 
 ---
 
-## 15. Checklist before publishing
+## 16. Checklist before publishing
+
+### Module code
+
+### Module code
 
 | Check | Why |
 |---|---|
-| `this.metadata.alias` is set and unique | Action routing breaks without it |
+| `this.metadata.alias` is set and unique across loaded modules | Action routing breaks without it |
 | `package.json` `homepage` field is set | Printed by `help()` as the docs URL |
-| All `ioc.json` `path` values are relative (not absolute) | `fix()` resolves them at runtime |
-| `this.fix(dep)` called before returning from `register()` | Absolute paths required for npm-installed modules |
-| `src/docs/<alias>.txt` exists and is included in `copy:txt` | `help()` action will fail silently without it |
-| Token format follows `alias:controller:cli` / `alias:controller:mcp` | Engine action routing requires this exact format |
-| `cli.json` only loaded for `'cli'` branch, `mcp.json` only for `'mcp'` | Prevents registering unused controllers |
-| `@kozen/engine` in `dependencies` (not `devDependencies`) | Required at runtime in consuming projects |
+| All `ioc.json` `path` values are relative strings (not absolute) | `fix()` converts them to absolute at runtime |
+| `this.fix(dep)` called before returning from `register()` | Without it, npm-installed modules fail with `Cannot find module` |
+| Token format follows `alias:service`, `alias:controller:cli`, `alias:controller:mcp` | Engine action routing requires this exact format |
+| `cli.json` only loaded in `'cli'` branch; `mcp.json` only in `'mcp'` | Prevents loading unused controllers |
+| `@kozen/engine` is in `dependencies` (not `devDependencies`) | Required at runtime in any project that installs the module |
+| No `bin` field in `package.json` | Modules use the engine binary — a module bin breaks tsconfig rootDir |
+
+### package.json fields
+
+| Check | Why |
+|---|---|
+| `"files": ["dist/*", "LICENSE", "README.md"]` | Prevents `src/`, `cfg/`, and credentials from being published |
 | `publishConfig.access: "public"` set | Scoped packages default to private on npm |
-| `"files": ["dist/*"]` in `package.json` | Prevents `src/` from being published |
+| `"engines": { "node": ">=18" }` present | Documents the runtime requirement; CI tools enforce it |
+| `@types/node` version in `devDependencies` matches `engines.node` major | Mismatched types cause spurious build errors |
+| `zod` in `dependencies` only if the module defines MCP tools | Adding it unconditionally bloats packages that don't use Zod |
+| `test` script present (placeholder or real) | `npm test` must exit cleanly — CI pipelines call it unconditionally |
+| `bugs.url` and `homepage` fields set | `help()` and `npm info` surface these to users |
+| `repository.url` uses `git+https://` prefix | Standard npm convention; some tools parse it |
+
+### Documentation
+
+| Check | Why |
+|---|---|
+| `src/docs/<alias>.txt` exists | `help()` action reads it; missing file → silent empty output |
+| `.txt` file name matches `this.metadata.alias` exactly | `FileService` looks up by alias name |
+| `src/docs/<alias>.txt` is included in the `copy:txt` glob | Without the copy step, `dist/docs/` will not have the file |
+| `README.md` is present at project root | Included in the npm tarball; displayed on npmjs.com |
+
+### Build
+
+| Check | Why |
+|---|---|
+| `tsconfig.json` `include` is `["src/**/*.ts"]` only | Adding `bin/**/*.ts` shifts rootDir and breaks the `main` field |
+| `tsconfig.json` has `"resolveJsonModule": true` | Required for `import ioc from './configs/ioc.json'` |
+| `dist/index.js` exists after `npm run build` | The `main` field must resolve |
+| `dist/index.d.ts` exists after `npm run build` | TypeScript consumers need the declarations |
+| `dist/docs/<alias>.txt` exists after `npm run build` | Confirms `copy:txt` script ran correctly |
+| `dist/` does NOT contain a `src/` subdirectory | Would mean tsconfig `include` has `bin/**/*.ts` — fix it |
+
+### npm publish
+
+| Check | Why |
+|---|---|
+| `npm pack --dry-run` output does not include `src/` or `node_modules/` | Final sanity check before committing to publish |
+| `npm pack --dry-run` output includes `dist/docs/<alias>.txt` | Confirms the help file will be in the published package |
+| Version in `package.json` is bumped from the last published version | `npm publish` fails if the version already exists on npm |
+| Git working tree is clean and version commit/tag was pushed | Keeps git history aligned with npm versions |
+| Post-publish: `npx kozen --moduleLoad=@scope/my-module --action=my-module:help` works in a clean directory | End-to-end confirmation the published package is functional |
