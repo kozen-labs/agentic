@@ -66,9 +66,158 @@ tags:
 
 ---
 
-## IDependency schema
+## IDependency — complete field reference
 
-### type: class — instantiate a class
+`IDependency` is the central data structure of Kozen's IoC system. Every service registered
+in `ioc.json`, `cli.json`, `mcp.json`, or `config.json` is described by one `IDependency`
+object. Understanding every field is essential for writing correct registration configs.
+
+### All fields
+
+| Field | Type | Description |
+|---|---|---|
+| `key` | `string` | IoC token used to identify and resolve this dependency. If omitted, inferred from the map key. Format: `alias:service` or `alias:controller:cli`. |
+| `target` | `any` | Class name (for `class`), function name (for `function`/`action`), token string (for `ref`/`alias`), or literal value (for `value`). |
+| `type` | `IDependencyType` | Registration strategy. See type reference table below. |
+| `as` | `IDependencyType` | Alternative type — used when the primary `type` is ambiguous. Rarely needed. |
+| `lifetime` | `IDependencyLifetime` | Instance lifecycle: `'singleton'` \| `'transient'` \| `'scoped'`. Default: `'singleton'`. |
+| `path` | `string` | Relative path (from the compiled file calling `fix()`) to the **directory** containing the `target` class or function. Required for `class`/`function`/`auto`. Never include the filename. |
+| `file` | `string` | Explicit file path when the class is not the default export or when the path cannot be inferred from `target`. Overrides `path` + `target` combination. |
+| `template` | `string` | Path template string with `{path}` and `{target}` placeholders (e.g., `"{path}/{target}"`). Used for dynamic path construction. |
+| `args` | `IJSON[] \| any[]` | Positional constructor arguments passed **before** the injected `dependencies` object. Use `null` to skip a position. |
+| `dependencies` | `IDependency[] \| IDependencyMap` | Services injected into the constructor. Each entry's `key` must match the corresponding constructor parameter name (Awilix uses name-based injection). |
+| `regex` | `string` | Regular expression string. Used with `type: 'auto'` to filter which exports are registered. |
+| `moduleType` | `IModuleType` | Module system of the file being imported: `'esm'` \| `'mjs'` \| `'module'` \| `'cjs'` \| `'commonjs'`. Required when importing ESM-only packages from a CJS context. |
+| `category` | `string` | Grouping label for metadata and log filtering. Follows the `VCategory` format (e.g., `'cli:tool'`). |
+| `raw` | `boolean` | When `true`, registers the `target` value as-is without any factory wrapping. Equivalent to `asValue()` regardless of `type`. |
+
+### IDependencyType — registration strategy reference
+
+| `type` value | What the container does | Required fields | Typical `lifetime` |
+|---|---|---|---|
+| `'class'` | Calls `new Target(injectedDeps, ...args)`. Target must be an exported class. | `target`, `path` | `singleton` or `transient` |
+| `'value'` | Registers the `target` (or a `value` field) directly, no instantiation. Use for config objects, constants. | `target` or `value` | N/A (values have no lifetime) |
+| `'function'` / `'method'` | Registers the function itself as an object. The function is not called at registration. | `target`, `path` | `singleton` |
+| `'action'` | Calls the function on every resolution (factory pattern). The return value is what consumers receive. | `target`, `path` | `transient` |
+| `'ref'` / `'alias'` | Injects another already-registered service by its token. Used **only** inside `dependencies` arrays. | `key` (consumer param), `target` (source token) | Inherits from source |
+| `'auto'` | Scans the `path` directory and registers every exported class automatically. Use for bulk component registration. | `path` | `singleton` typical |
+| `'instance'` / `'object'` | Registers a pre-built object instance directly. No factory is used. | `target` (the instance) | N/A |
+
+### IDependencyLifetime
+
+| Lifetime | Instances | Container behaviour | Use when |
+|---|---|---|---|
+| `'singleton'` | One per container | Created on first resolution, reused forever | Stateless services, connection clients, logger, any service without per-call state |
+| `'transient'` | One per `resolve()` call | New instance every time | Services with per-call state (open cursors, open sockets, per-request accumulators) |
+| `'scoped'` | One per scope | Created once within a scope, new instance per new scope | HTTP request handlers, rarely used in Kozen |
+
+### IDependency examples by type
+
+#### `class` — standard service registration
+
+```json
+{
+  "secret:manager": {
+    "target": "SecretManager",
+    "type": "class",
+    "lifetime": "singleton",
+    "path": "../services",
+    "args": [{ "type": "aws" }],
+    "dependencies": [
+      { "key": "assistant", "target": "IoC",            "type": "ref" },
+      { "key": "logger",    "target": "logger:service", "type": "ref" }
+    ]
+  }
+}
+```
+
+`args` passes `{ type: "aws" }` as the first constructor argument. `dependencies` injects
+`assistant` and `logger` by matching constructor parameter names. The combined call is:
+`new SecretManager({ type: "aws" }, { assistant: iocInstance, logger: loggerInstance })`.
+
+#### `ref` — injecting a previously registered service
+
+```json
+{ "key": "srvTrigger", "target": "trigger:service", "type": "ref" }
+```
+
+Used exclusively inside a `dependencies` array. Tells Awilix: "inject the service registered
+as `trigger:service` into the constructor parameter named `srvTrigger`."
+
+#### `auto` — bulk component registration
+
+```json
+{
+  "components": {
+    "path": "../../components",
+    "type": "auto",
+    "lifetime": "singleton",
+    "dependencies": [
+      { "key": "assistant", "target": "IoC",            "type": "ref" },
+      { "key": "logger",    "target": "logger:service", "type": "ref" }
+    ]
+  }
+}
+```
+
+Awilix scans all `.js`/`.ts` files in `../../components`, imports each, and registers every
+exported class. Useful for pipeline component directories where adding a new file should
+automatically make it available by class name.
+
+#### `value` — static configuration object
+
+```json
+{
+  "my:app:config": {
+    "key": "my:app:config",
+    "target": "my:app:config",
+    "type": "value",
+    "value": {
+      "endpoint": "https://api.example.com",
+      "timeout": 5000,
+      "retries": 3
+    }
+  }
+}
+```
+
+Resolve with: `const cfg = await this.assistant?.resolve<{ endpoint: string }>('my:app:config')`.
+
+#### `moduleType` — ESM package in a CJS module
+
+```json
+{
+  "my:esm:service": {
+    "target": "MyEsmService",
+    "type": "class",
+    "lifetime": "singleton",
+    "path": "../services",
+    "moduleType": "esm"
+  }
+}
+```
+
+Required when importing an ESM-only package from a compiled CommonJS module (the default
+for Kozen modules compiled with `"module": "CommonJS"` in tsconfig).
+
+#### `template` — dynamic path construction
+
+```json
+{
+  "my:dynamic:service": {
+    "target": "MyService",
+    "type": "class",
+    "template": "{path}/{target}",
+    "path": "../services"
+  }
+}
+```
+
+The template is resolved by `fix()` into an absolute path: `<absolute_dir>/services/MyService`.
+
+---
+
+## IDependency schema
 
 ```json
 {
