@@ -116,7 +116,44 @@ incorrect placement.
 
 ## Page type templates
 
+### Home.md = README.md parity rule
+
+`Home.md` (GitHub Wiki) and `README.md` (repository root) must contain **identical content**.
+
+Why: npm, PyPI, and crates.io display `README.md` directly. GitHub displays `Home.md` as the
+wiki landing page. A developer discovering the module through any of those surfaces must see
+the same high-level overview and be able to navigate to the full documentation from there.
+
+**Workflow:**
+1. Write `Home.md` first, following the template below.
+2. Copy the finished content verbatim into `README.md`.
+3. Replace any GitHub wiki links in `README.md` with the same absolute wiki URLs — they work
+   from npm and GitHub alike.
+4. When either file changes, sync the other immediately.
+
+**What must stay identical:**
+- Module name and one-sentence definition
+- Key Features list
+- Why Use This section
+- Installation snippet
+- References / navigation links
+- Disclaimer blockquote
+
+**What may differ only in link format:** GitHub Wiki renders wiki-relative links; README.md
+must use full absolute URLs. In practice, since both should already use absolute GitHub wiki
+URLs, no adjustment is needed.
+
+---
+
 ### Home.md
+
+`Home.md` is the entry point for developers on GitHub, npm, and PyPI. Keep it minimal:
+a high-level overview that earns the reader's trust and guides them to the right wiki page.
+No API details, no configuration tables, no flag references — those belong on dedicated pages.
+
+**Minimal content rule:** If a sentence on `Home.md` requires the reader to know what a flag
+or interface field does, move that sentence to the appropriate dedicated page and replace it
+with a link.
 
 Required sections (in order):
 
