@@ -132,7 +132,7 @@ Once the plan is approved:
 ## Do & Don't
 
 **Do:**
-- Use JSDoc format for all public classes and methods; keep every comment as simple as possible.
+- Use JSDoc format for all public classes and methods; keep every comment as simple as possible; include arguments and return types in the JSDoc, even if they can be inferred from TypeScript — it improves readability and editor tooltips.
 - Document the WHY (non-obvious constraints, side effects) — never restate what the name already says.
 - Apply KISS first: the simplest correct solution wins over any pattern.
 - Cap class hierarchies at two levels (base + one subclass) to avoid the yo-yo problem.
