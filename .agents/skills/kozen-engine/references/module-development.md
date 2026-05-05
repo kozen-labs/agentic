@@ -646,11 +646,7 @@ export class MyCLIController extends KzController {
     console.log(JSON.stringify(result, null, 2));
   }
 
-  /**
-   * Parses and normalises CLI arguments.
-   * Called by the engine before the action method is dispatched.
-   * Override to apply environment variable fallbacks and type coercions.
-   */
+  /** Apply env-var fallbacks and default values to parsed args. */
   public async fill(args: string[] | IArgs): Promise<IArgs> {
     const parsed = await super.fill(args);
     parsed['key']    = parsed['key']    || process.env.KOZEN_MY_MODULE_KEY;
@@ -760,7 +756,7 @@ export class MyMCPController extends KzController {
       const service = await this.assistant?.resolve<MyService>('my-module:service');
       const result  = await service?.execute({
         key:    args.key,
-        driver: args.driver || process.env.MY_DRIVER || 'default'
+        driver: args.driver || process.env.KOZEN_MY_MODULE_DRIVER || 'default'
       });
 
       return {
@@ -811,7 +807,99 @@ Naming convention: prefix all exported interfaces with `I` (e.g., `IMyOptions`, 
 
 ---
 
-## 11. Inline module documentation (src/docs/my-module.txt)
+## 11. Code comment standard (JSDoc)
+
+All Kozen module source code uses JSDoc syntax (`/** ... */`) for API-level comments. The
+rules below apply to every file in `src/`.
+
+### Rules
+
+- **Use `/** ... */` for all public classes, methods, and interface properties** that a
+  consumer might need to understand without reading the implementation.
+- **Keep every comment to one line.** If the second line is tempting, the comment is too
+  long — cut it or move the content to `src/docs/<alias>.txt`.
+- **Document the WHY, not the WHAT.** If the comment restates the method name or its
+  signature, delete it. Write a comment only when there is a non-obvious constraint,
+  invariant, or side-effect a reader would miss.
+- **No `@example` sections.** Examples belong in `src/docs/<alias>.txt` where they are
+  versioned, tested, and surfaced by the `help()` action. A JSDoc `@example` in source is
+  duplicated effort and tends to go stale.
+- **Use `@param` only when the parameter name alone is ambiguous.** Skip it for `args`,
+  `options`, `config` — the types already document those.
+- **Use `@returns` only when the resolved type is not obvious** from the return type
+  annotation.
+- **`@deprecated` and `@throws` are always correct** when applicable — include them.
+
+### What to annotate
+
+| Element | Annotate? | Example |
+|---|---|---|
+| Public class | Yes | `/** Manages secrets via AWS or MongoDB CSFLE. */` |
+| Public method that maps to a CLI action | Yes — one line | `/** Retrieve a secret by key. */` |
+| `help()` method | Yes — state the alias of the file it reads | `/** Prints help from src/docs/trigger.txt. */` |
+| `fill()` override | Yes — one line summarising what defaults it applies | `/** Apply env-var fallbacks for URI, DB, and collection. */` |
+| `register()` override | Yes — one line | `/** Load IoC config for CLI, MCP, or SDK use. */` |
+| Private utility method | No — only if the logic is non-obvious |  |
+| Interface field | Only if the name is ambiguous | skip `uri`, document `delegate` |
+| `constructor` | No — only if it has a non-obvious side-effect |  |
+
+### Correct examples (from real module patterns)
+
+```typescript
+/** Starts the change-stream watcher and dispatches events to the delegate. */
+public async start(options: ITriggerOptions): Promise<void> { ... }
+
+/** Apply env-var fallbacks for URI, database, and collection. */
+public async fill(args: string[] | IArgs): Promise<IArgs> { ... }
+
+/** Retrieve the secret identified by key, using the configured backend. */
+public async get(): Promise<void> { ... }
+
+/** Prints help from src/docs/secret.txt. */
+public async help(): Promise<void> { ... }
+```
+
+### Incorrect examples (violations)
+
+```typescript
+// ❌ Too long — move detail to src/docs/<alias>.txt
+/**
+ * Parses and normalises CLI arguments.
+ * Called by the engine before the action method is dispatched.
+ * Override to apply environment variable fallbacks and type coercions.
+ */
+public async fill(...) {}
+
+// ❌ Restates the method name — no value
+/** Executes the execution. */
+public async execute() {}
+
+// ❌ Example in JSDoc — belongs in src/docs/<alias>.txt
+/**
+ * Get a secret.
+ * @example
+ * kozen --action=secret:get --key=MY_KEY
+ */
+public async get() {}
+
+// ❌ @param for obvious arg — redundant
+/**
+ * @param args Parsed CLI arguments
+ * @returns Parsed CLI arguments with fallbacks applied
+ */
+public async fill(args: IArgs): Promise<IArgs> {}
+```
+
+### Extended documentation goes to `src/docs/<alias>.txt`
+
+When a developer needs usage examples, parameter descriptions, flag tables, or any content
+longer than one sentence, write it in `src/docs/<alias>.txt`, not in JSDoc. That file is
+distributed in the npm package, surfaced by `help()`, and readable by LLMs and documentation
+generators without executing the code.
+
+---
+
+## 12. Inline module documentation (src/docs/my-module.txt)
 
 Every module with a CLI interface should ship a plain-text help file in `src/docs/`. This
 file is read and displayed verbatim by the `help()` action via the engine's `FileService`.
@@ -906,7 +994,7 @@ Examples:
 
 ---
 
-## 12. Building and testing locally
+## 13. Building and testing locally
 
 ```bash
 # Install dependencies
@@ -952,7 +1040,7 @@ Checklist after `npm run build`:
 
 ---
 
-## 13. The engine binary — why modules do not define their own `bin`
+## 14. The engine binary — why modules do not define their own `bin`
 
 `@kozen/engine` is the only package in the Kozen ecosystem that defines a CLI binary. All
 other modules are loaded by that binary at runtime via `--moduleLoad`.
@@ -1013,7 +1101,7 @@ dependency, npm symlinks `dist/bin/kozen.js` as the `kozen` executable. This is 
 
 ---
 
-## 14. Publishing to npm
+## 15. Publishing to npm
 
 ### Prerequisites
 
@@ -1155,7 +1243,7 @@ separately — it would build twice. Use `npm publish` directly in that case.
 
 ---
 
-## 15. Complete minimal module example
+## 16. Complete minimal module example
 
 The smallest valid Kozen module — one service, one CLI controller, no MCP:
 
@@ -1297,7 +1385,7 @@ npx kozen --moduleLoad=@scope/greeter --action=greeter:greet --name=Kozen
 
 ---
 
-## 16. Checklist before publishing
+## 17. Checklist before publishing
 
 ### Module code
 
