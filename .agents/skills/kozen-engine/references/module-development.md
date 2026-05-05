@@ -1014,7 +1014,224 @@ Naming convention: prefix all exported interfaces with `I` (e.g., `IMyOptions`, 
 
 ---
 
-## 12. Code comment standard (JSDoc)
+## 12. Structured logging
+
+Every Kozen module uses the `LoggerService` that ships with `@kozen/engine`. It is registered
+as a singleton in the IoC container under the token `logger:service` and injected into every
+service and controller that declares the dependency. **Never use `console.log` directly** —
+all output must go through `this.logger` so that level filtering, flow correlation, and
+multi-destination routing (console / MongoDB / file) work consistently.
+
+For the full programmatic API, environment variables, and output destination configuration,
+see `references/cli-mcp.md`. This section covers only what is needed while writing module
+source code.
+
+---
+
+### Injecting the logger via IoC
+
+Add the `logger` dependency to every service entry in `ioc.json`:
+
+```json
+{
+  "my-module:service": {
+    "target": "MyService",
+    "type": "class",
+    "lifetime": "singleton",
+    "path": "../services",
+    "dependencies": [
+      { "key": "assistant", "target": "IoC",            "type": "ref" },
+      { "key": "logger",    "target": "logger:service", "type": "ref" }
+    ]
+  }
+}
+```
+
+The IoC container passes `{ assistant, logger }` to the constructor as the `dependency`
+argument inherited by `BaseService`.
+
+---
+
+### ILogLevel values
+
+```typescript
+import { ILogLevel } from '@kozen/engine';
+
+ILogLevel.NONE    // 0  — no output (required for MCP servers)
+ILogLevel.ERROR   // 1  — errors only
+ILogLevel.WARN    // 2  — errors + warnings
+ILogLevel.DEBUG   // 3  — errors + warnings + debug
+ILogLevel.INFO    // 4  — all standard levels (default)
+ILogLevel.ALL     // -1 — everything, including verbose
+```
+
+---
+
+### ILogEntry — the full structure
+
+Every `this.logger.*()` call accepts either a plain string or an `ILogEntry` object:
+
+```typescript
+interface ILogEntry {
+  message:   string;          // required — human-readable description
+  flow?:     string;          // correlation ID (YYYYMMDDHHMMSSXX); auto-generated if omitted
+  src?:      string;          // 'alias:layer:method', e.g. 'trigger:service:start'
+  category?: string;          // VCategory.* constant or a plain string tag
+  data?:     any;             // structured payload (object, array, primitive)
+  level?:    string | ILogLevel; // rarely set manually; the method name sets this
+  date?:     string;          // ISO timestamp; auto-generated if omitted
+}
+```
+
+---
+
+### Flow IDs — generation and propagation
+
+A **flow ID** links every log entry for a single end-to-end operation (one CLI invocation,
+one MCP tool call, one SDK call). The format is `YYYYMMDDHHMMSSXX` where `XX` is a random
+two-digit suffix.
+
+**In a controller** — generate once at the start of each action and pass it down:
+
+```typescript
+public async start(options: IArgs): Promise<void> {
+  const flow = this.getId(options as unknown as IConfig); // reads --flow or auto-generates
+  this.logger?.info({ flow, src: 'trigger:controller:start', message: 'Action started' });
+  const svc = await this.assistant?.resolve<IChangeStreamService>('trigger:service');
+  await svc?.start({ ...options, flow });
+}
+```
+
+**In a service** — receive `flow` through the options object and thread it through every log
+call within that invocation:
+
+```typescript
+public async start(options: ITriggerOptions): Promise<void> {
+  const { flow } = options;
+  this.logger?.info({
+    flow,
+    src: 'trigger:service:start',
+    message: 'Change-stream watcher started',
+    data: { database: options.mdb.database, collection: options.mdb.collection }
+  });
+  // ... on error:
+  this.logger?.error({
+    flow,
+    src: 'trigger:service:start',
+    message: `Failed to open change stream: ${(error as Error).message}`
+  });
+}
+```
+
+Never generate a new flow ID inside a service — only controllers or the top-level entry
+point create flow IDs.
+
+---
+
+### `src` naming convention
+
+Use the pattern `'alias:layer:method'`, all lowercase, colon-separated:
+
+| Example | Where |
+|---|---|
+| `'trigger:service:start'` | `ChangeStreamService.start()` |
+| `'trigger:controller:start'` | `TriggerCLIController.start()` |
+| `'secret:service:manager:get'` | `SecretManager.get()` inside the secret module |
+| `'iam-rectification:controller:verify'` | `RectificationCLIController.verify()` |
+
+---
+
+### Logger in a service (complete example)
+
+```typescript
+import { BaseService, ILogLevel } from '@kozen/engine';
+import type { IIoC, ILogger } from '@kozen/engine';
+import type { IMyOptions } from '../models/MyModel';
+
+export class MyService extends BaseService {
+
+  constructor(dependency?: { assistant: IIoC; logger: ILogger }) {
+    super(dependency);
+  }
+
+  /**
+   * Execute the main operation.
+   * @param {IMyOptions} options - Runtime options including the flow ID.
+   */
+  public async execute(options: IMyOptions): Promise<void> {
+    const { flow } = options;
+    try {
+      this.logger?.debug({ flow, src: 'my-module:service:execute', message: 'Starting' });
+      // ... business logic ...
+      this.logger?.info({ flow, src: 'my-module:service:execute', message: 'Completed' });
+    } catch (error) {
+      this.logger?.error({
+        flow,
+        src: 'my-module:service:execute',
+        message: (error as Error).message
+      });
+      throw error;
+    }
+  }
+}
+```
+
+---
+
+### Logger in a controller — `getId()` and `wait()`
+
+```typescript
+import { CLIController, ILogLevel } from '@kozen/engine';
+import type { IIoC, ILogger, IArgs, IConfig } from '@kozen/engine';
+
+export class MyCLIController extends CLIController {
+
+  constructor(dependency?: { assistant: IIoC; logger: ILogger }) {
+    super(dependency);
+  }
+
+  public async execute(options: IArgs): Promise<void> {
+    // Generate the flow ID once for this invocation
+    const flow = this.getId(options as unknown as IConfig);
+    try {
+      const svc = await this.assistant?.resolve<IMyService>('my-module:service');
+      await svc?.execute({ ...options, flow });
+      this.logger?.info({ flow, src: 'my-module:controller:execute', message: '✅ Done' });
+    } catch (error) {
+      this.logger?.error({
+        flow,
+        src: 'my-module:controller:execute',
+        message: `❌ ${(error as Error).message}`
+      });
+    }
+    // Flush all async log writes before the process exits
+    await this.wait();
+  }
+}
+```
+
+`this.wait()` (inherited from `KzController`) calls `await Promise.all(this.logger.stack)`.
+Always call it at the end of every action that logs — especially before process exit.
+
+---
+
+### VCategory constants
+
+`VCategory` is exported by `@kozen/engine` and provides standard category strings for
+consistent log filtering. Prefer these over ad-hoc strings:
+
+```typescript
+import { VCategory } from '@kozen/engine';
+
+VCategory.core.secret    // 'CORE.SECRET'
+VCategory.core.trigger   // 'CORE.TRIGGER'
+// Use VCategory.core.<alias> in the category field when the module alias has a match.
+// For custom modules, use a plain UPPER_SNAKE string: 'MY_MODULE'.
+```
+
+---
+
+## 13. Code comment standard (JSDoc)
 
 All Kozen module source code uses JSDoc syntax (`/** ... */`) for API-level comments. Follow
 the standard multi-line JSDoc format described at https://jsdoc.app/howto-es2015-classes.
@@ -1123,7 +1340,7 @@ generators without executing the code.
 
 ---
 
-## 13. Inline module documentation (src/docs/my-module.txt)
+## 14. Inline module documentation (src/docs/my-module.txt)
 
 Every module with a CLI interface should ship a plain-text help file in `src/docs/`. This
 file is read and displayed verbatim by the `help()` action via the engine's `FileService`.
@@ -1218,7 +1435,7 @@ Examples:
 
 ---
 
-## 14. Building and testing locally
+## 15. Building and testing locally
 
 ```bash
 # Install dependencies
@@ -1264,7 +1481,7 @@ Checklist after `npm run build`:
 
 ---
 
-## 15. The engine binary — why modules do not define their own `bin`
+## 16. The engine binary — why modules do not define their own `bin`
 
 `@kozen/engine` is the only package in the Kozen ecosystem that defines a CLI binary. All
 other modules are loaded by that binary at runtime via `--moduleLoad`.
@@ -1325,7 +1542,7 @@ dependency, npm symlinks `dist/bin/kozen.js` as the `kozen` executable. This is 
 
 ---
 
-## 16. Publishing to npm
+## 17. Publishing to npm
 
 ### Prerequisites
 
@@ -1467,7 +1684,7 @@ separately — it would build twice. Use `npm publish` directly in that case.
 
 ---
 
-## 17. Complete minimal module example
+## 18. Complete minimal module example
 
 The smallest valid Kozen module — one service, one CLI controller, no MCP:
 
@@ -1609,7 +1826,7 @@ npx kozen --moduleLoad=@scope/greeter --action=greeter:greet --name=Kozen
 
 ---
 
-## 18. Checklist before publishing
+## 19. Checklist before publishing
 
 ### Module code
 

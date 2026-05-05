@@ -314,13 +314,30 @@ await Promise.all(logger.stack);
 Log entry structure:
 
 ```typescript
-interface ILogInput {
-  flow?: string;       // Correlation ID
-  src?: string;        // 'Module:Class:method'
-  message: string;     // Human-readable description
-  category?: string;   // VCategory.* constant
-  data?: any;          // Structured payload
+// Full structured entry — all fields except message are optional
+interface ILogEntry {
+  message:   string;             // Human-readable description (required)
+  flow?:     string;             // Correlation ID (YYYYMMDDHHMMSSXX); auto-generated if omitted
+  src?:      string;             // 'alias:layer:method', e.g. 'trigger:service:start'
+  category?: string;             // VCategory.* constant or plain UPPER_SNAKE string
+  data?:     any;                // Structured payload (object, array, primitive)
+  level?:    string | ILogLevel; // Set by the method (error/warn/info/debug) — rarely overridden
+  date?:     string;             // ISO timestamp; auto-generated if omitted
 }
+
+// ILogInput accepts a plain string/number or a full ILogEntry object
+type ILogInput = string | number | ILogEntry;
+```
+
+`ILogLevel` enum values:
+
+```typescript
+ILogLevel.NONE    // 0  — no output (required for MCP; stdout is the JSON-RPC channel)
+ILogLevel.ERROR   // 1  — errors only
+ILogLevel.WARN    // 2  — errors + warnings
+ILogLevel.DEBUG   // 3  — errors + warnings + debug
+ILogLevel.INFO    // 4  — all standard levels (default)
+ILogLevel.ALL     // -1 — everything, including verbose
 ```
 
 ### Log output destinations
