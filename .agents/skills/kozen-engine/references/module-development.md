@@ -63,7 +63,214 @@ Every Kozen module follows this layout:
 
 ---
 
-## 2. package.json
+## 2. Design principles
+
+A Kozen module is production software. The quality of a module is measured by three things:
+
+1. **How quickly a new developer understands the source code** — clarity over cleverness.
+2. **How easily it can be modified or extended** — a change in one place should not break
+   another.
+3. **How efficiently it uses hardware** — minimum RAM, CPU, and disk I/O to accomplish the
+   task. Do not allocate what you do not need; do not block when you can yield.
+
+Apply the principles below as needed. Do not apply them all to every module — apply the ones
+that solve a real problem in the code at hand.
+
+---
+
+### KISS — Keep It Simple
+
+The simplest solution that works correctly is the best solution. Complexity introduced
+"just in case" or "for future flexibility" is waste. If a feature is not required now, do
+not build the infrastructure for it.
+
+- A service with one method is better than a service with ten.
+- A flat `switch` is better than a class hierarchy when there are fewer than four cases.
+- A plain function is better than a class when there is no state to encapsulate.
+
+---
+
+### SoC — Separation of Concerns
+
+Each class has exactly one reason to change:
+
+- **Services** own business logic. They do not parse CLI flags, format output, or manage
+  connections directly — they delegate that to the layer that owns it.
+- **Controllers** own I/O dispatch (parsing args, formatting output, routing to services).
+  They do not contain business logic.
+- **Models** own type definitions. They do not contain methods.
+
+When a class is hard to name, it is doing too many things.
+
+---
+
+### Class hierarchies — avoid the yo-yo problem
+
+Inheritance hierarchies deeper than two levels (base + one concrete subclass) are forbidden.
+The yo-yo problem occurs when understanding a method requires jumping up and down a deep
+inheritance chain — every jump is a cognitive cost and a maintenance hazard.
+
+```
+// ✅ Acceptable: two levels
+BaseService → MyService
+
+// ❌ Forbidden: three or more levels
+BaseService → AbstractMyService → ConcreteMyService → SpecializedMyService
+```
+
+When a third level is tempting, use **composition** instead: extract the varying behavior
+into a collaborator and inject it. This is also the foundation of the Strategy pattern
+(see below).
+
+---
+
+### SOLID in practice
+
+Apply these four rules; the fifth (Interface Segregation) is usually automatic in TypeScript:
+
+| Principle | Rule in Kozen modules |
+|---|---|
+| **SRP** — Single Responsibility | One class, one reason to change |
+| **OCP** — Open / Closed | Extend by adding a new strategy class, not by modifying existing logic |
+| **LSP** — Liskov Substitution | A subclass must be usable wherever its parent is expected — if it isn't, it should not be a subclass |
+| **DIP** — Dependency Inversion | Depend on tokens resolved from the IoC container, not on concrete `new MyClass()` calls |
+
+---
+
+### Strategy pattern for variable behavior
+
+Whenever behavior can vary — now or in a likely future — model it as interchangeable
+implementations of a shared contract. Classes do not need to be named `*Strategy`; the
+concept is what matters: each concrete class defines a distinct behavior, and the caller
+holds a reference to the interface, not the implementation.
+
+Real Kozen examples:
+- `SecretManagerAWS` and `SecretManagerMDB` are both implementations of `ISecretManager` —
+  the `SecretManager` service selects the right one based on config.
+- `IAMRectificationScram` and `IAMRectificationX509` implement the same rectification
+  contract with different authentication mechanisms.
+
+**Rule:** if the same action can be performed in more than one way, and the choice depends
+on configuration, create one class per variant and select via IoC or a factory — do not add
+`if/switch` logic inside a single class that grows with every new variant.
+
+---
+
+### Utility functions vs services
+
+Before writing a utility function, ask: does this logic depend on injected state (a
+connection, a config, a logger)? If yes, it is a service class that must be registered in
+`ioc.json` and resolved through IoC. If no, a plain exported function is correct.
+
+| Situation | Solution |
+|---|---|
+| Stateless transformation (parse, format, convert) | Plain exported function in `src/utils/` |
+| Logic that needs a DB connection, logger, or config | `BaseService` subclass in `ioc.json` |
+| Logic shared across multiple services in the same module | Promote to a service registered in `ioc.json` |
+| Logic shared across multiple Kozen modules | Publish as a separate npm package (see `@mongodb-solution-assurance/iam-util`) |
+
+Keep utility functions minimal. If you find yourself building a utility library inside a
+module, extract it into its own package or reconsider whether the module is focused enough.
+
+---
+
+### IoC as the single dynamic loader
+
+**All dynamic class instantiation and resource loading must go through the IoC container.**
+Never use `new MyService()` inside a controller or service body. Never use `require()` or
+`import()` to load a class at runtime outside of the IoC registration phase.
+
+```typescript
+// ✅ Correct: resolve through IoC
+const service = await this.assistant?.resolve<IMyService>('my-module:service');
+
+// ❌ Wrong: direct instantiation bypasses the container
+const service = new MyService(this.assistant, this.logger);
+```
+
+Reasons:
+- The IoC container manages lifetime (singleton, transient, scoped) — bypassing it creates
+  uncontrolled duplicate instances.
+- Resolving through a token string means the implementation can be swapped without changing
+  the caller (DIP + Strategy in one move).
+- It makes dependencies explicit and testable.
+
+---
+
+### Circular imports — always forbidden
+
+A circular import occurs when module A imports from module B and module B imports from module
+A (directly or transitively). In Node.js/TypeScript the runtime resolves one of the modules
+first and hands the other an empty or partial object, causing `undefined` errors that appear
+only at call time and are difficult to trace.
+
+**Enforce a strict one-way import direction across all source layers:**
+
+```
+src/models/      ← no imports from other src/ layers
+    ↑
+src/services/    ← imports types from src/models/ only
+    ↑
+src/controllers/ ← imports types from src/models/; resolves services via IoC token
+    ↑
+src/index.ts     ← imports and re-exports public types; registers the module
+```
+
+Rules that follow from this direction:
+
+- **`src/models/`** contains only interfaces and type aliases. It never imports from
+  `src/services/` or `src/controllers/`.
+- **`src/services/`** imports types from `src/models/` for its signatures. It never imports
+  another service class directly — cross-service dependencies are always resolved through the
+  IoC container by token string.
+- **`src/controllers/`** imports types from `src/models/` for parameter and return types. It
+  never imports a service class — services are resolved through IoC.
+- **`src/index.ts`** is the only file allowed to import from all layers; it exports the
+  public API and registers the module. Nothing else imports from `src/index.ts`.
+
+```typescript
+// ✅ Correct: controller resolves service through IoC — no import of the class
+import type { IMyService } from '../models/MyModel';
+const svc = await this.assistant?.resolve<IMyService>('my-module:service');
+
+// ❌ Wrong: direct import creates a dependency edge that can produce a cycle
+import { MyService } from '../services/MyService';
+const svc = new MyService(this.assistant, this.logger);
+```
+
+If a lint tool or TypeScript path analysis reports a cycle, treat it as a build error, not a
+warning. The fix is always to break the dependency by moving shared types to `src/models/`
+and resolving the runtime dependency through IoC.
+
+---
+
+### GRASP quick reference
+
+Apply these GRASP responsibilities as a checklist when assigning behavior to a class:
+
+| Responsibility | Question | Kozen application |
+|---|---|---|
+| **Information Expert** | Who has the data needed to fulfil this? | The service that owns the domain data handles the operation — not the controller |
+| **Creator** | Who should create instance X? | The IoC container — not a controller or another service |
+| **Low Coupling** | Does this dependency need to exist? | Inject via IoC token, not via `new` — replace the dependency without touching the consumer |
+| **High Cohesion** | Do all methods in this class belong together? | If a class has methods that rarely interact with each other, split it |
+| **Controller** | Who receives the system event? | `KzController` subclass receives the CLI/MCP event and delegates to services |
+
+---
+
+### GoF patterns in use
+
+| Pattern | Where it appears in Kozen |
+|---|---|
+| **Strategy** | `ISecretManager` → `SecretManagerAWS` / `SecretManagerMDB`; `IAMRectification*` variants |
+| **Template Method** | `KzModule.register()` defines the skeleton; subclasses fill in the dependency map |
+| **Facade** | `KzController` subclasses expose a simple action interface over one or more services |
+| **Singleton** | IoC `lifetime: "singleton"` — prefer this for stateless services; never implement Singleton manually |
+| **Factory Method** | The IoC container is the factory — register a `function` type dependency when construction logic is needed |
+
+---
+
+## 3. package.json
 
 The template below matches the patterns used across `@kozen/trigger`, `@kozen/secret`, and
 `@kozen/iam-rectification`. Annotations in comments explain every field and flag.
@@ -271,7 +478,7 @@ try {
 
 ---
 
-## 3. tsconfig.json
+## 4. tsconfig.json
 
 ```json
 {
@@ -331,7 +538,7 @@ instead of `dist/index.js` — breaking the `main` field in `package.json`.
 
 ---
 
-## 4. The module entry point (src/index.ts)
+## 5. The module entry point (src/index.ts)
 
 The entry point has two responsibilities: (1) export the `KzModule` subclass, and
 (2) re-export all public interfaces and classes the module exposes as a library.
@@ -396,7 +603,7 @@ export { MyMCPController }       from './controllers/MyMCPController';
 
 ---
 
-## 5. The `register()` function in depth
+## 6. The `register()` function in depth
 
 `register(config, opts)` is the most important method in a Kozen module. It is called once
 by the engine during module loading, before any controller or service is instantiated.
@@ -448,7 +655,7 @@ directory — which is the host project's root, not the module's `dist/` directo
 
 ---
 
-## 6. IoC configuration files — why three files, not one
+## 7. IoC configuration files — why three files, not one
 
 Most developers ask: "Why not put everything in one `ioc.json`?" The answer is
 **conditional loading by runtime type**.
@@ -543,7 +750,7 @@ appropriate here.
 
 ---
 
-## 7. Implementing a Service (src/services/MyService.ts)
+## 8. Implementing a Service (src/services/MyService.ts)
 
 ```typescript
 import { BaseService } from '@kozen/engine';
@@ -594,7 +801,7 @@ Service rules:
 
 ---
 
-## 8. Implementing a CLI Controller (src/controllers/MyCLIController.ts)
+## 9. Implementing a CLI Controller (src/controllers/MyCLIController.ts)
 
 A CLI controller receives the parsed `IArgs` object and dispatches to services. The
 action method name must match the method portion of `--action=alias:method`.
@@ -724,7 +931,7 @@ This pattern avoids needing separate `--action` values for variants of the same 
 
 ---
 
-## 9. Implementing an MCP Controller (src/controllers/MyMCPController.ts)
+## 10. Implementing an MCP Controller (src/controllers/MyMCPController.ts)
 
 MCP controllers register tools with the MCP server during startup. Tool handlers are called
 by the LLM client on demand.
@@ -785,7 +992,7 @@ MCP controller rules:
 
 ---
 
-## 10. Models file (src/models/MyModel.ts)
+## 11. Models file (src/models/MyModel.ts)
 
 Define all public-facing interfaces in a models file. This is what downstream consumers
 import when using the module as a library.
@@ -807,71 +1014,88 @@ Naming convention: prefix all exported interfaces with `I` (e.g., `IMyOptions`, 
 
 ---
 
-## 11. Code comment standard (JSDoc)
+## 12. Code comment standard (JSDoc)
 
-All Kozen module source code uses JSDoc syntax (`/** ... */`) for API-level comments. The
-rules below apply to every file in `src/`.
+All Kozen module source code uses JSDoc syntax (`/** ... */`) for API-level comments. Follow
+the standard multi-line JSDoc format described at https://jsdoc.app/howto-es2015-classes.
+The rules below apply to every file in `src/`.
 
 ### Rules
 
-- **Use `/** ... */` for all public classes, methods, and interface properties** that a
-  consumer might need to understand without reading the implementation.
-- **Keep every comment to one line.** If the second line is tempting, the comment is too
-  long — cut it or move the content to `src/docs/<alias>.txt`.
+- **Always use the multi-line JSDoc block format** — even for a single sentence. Never
+  collapse a comment to `/** text */` on one line; always open with `/**`, prefix each body
+  line with ` * `, and close with ` */`.
+- **Keep comments brief.** A description should fit in one to two lines. If more detail is
+  needed, move it to `src/docs/<alias>.txt`.
 - **Document the WHY, not the WHAT.** If the comment restates the method name or its
   signature, delete it. Write a comment only when there is a non-obvious constraint,
   invariant, or side-effect a reader would miss.
 - **No `@example` sections.** Examples belong in `src/docs/<alias>.txt` where they are
-  versioned, tested, and surfaced by the `help()` action. A JSDoc `@example` in source is
-  duplicated effort and tends to go stale.
-- **Use `@param` only when the parameter name alone is ambiguous.** Skip it for `args`,
-  `options`, `config` — the types already document those.
-- **Use `@returns` only when the resolved type is not obvious** from the return type
-  annotation.
+  versioned and surfaced by the `help()` action. A JSDoc `@example` in source is duplicated
+  effort and tends to go stale.
+- **Use `@param` for non-obvious parameters.** Include the type (in curly braces) and a short
+  dash-separated description following JSDoc convention: `@param {type} name - Description.`
+  Skip it for self-evident parameters like `args`, `options`, or `config` when the type
+  annotation already documents them.
+- **Use `@returns` when the resolved type is not obvious** from the return type annotation.
 - **`@deprecated` and `@throws` are always correct** when applicable — include them.
 
 ### What to annotate
 
-| Element | Annotate? | Example |
-|---|---|---|
-| Public class | Yes | `/** Manages secrets via AWS or MongoDB CSFLE. */` |
-| Public method that maps to a CLI action | Yes — one line | `/** Retrieve a secret by key. */` |
-| `help()` method | Yes — state the alias of the file it reads | `/** Prints help from src/docs/trigger.txt. */` |
-| `fill()` override | Yes — one line summarising what defaults it applies | `/** Apply env-var fallbacks for URI, DB, and collection. */` |
-| `register()` override | Yes — one line | `/** Load IoC config for CLI, MCP, or SDK use. */` |
-| Private utility method | No — only if the logic is non-obvious |  |
-| Interface field | Only if the name is ambiguous | skip `uri`, document `delegate` |
-| `constructor` | No — only if it has a non-obvious side-effect |  |
+| Element | Annotate? |
+|---|---|
+| Public class | Yes |
+| Public method that maps to a CLI action | Yes |
+| `help()` method — state the alias of the file it reads | Yes |
+| `fill()` override — summarize what defaults it applies | Yes |
+| `register()` override | Yes |
+| `constructor` — only if it has a non-obvious side-effect | Conditional |
+| Private utility method — only if the logic is non-obvious | Conditional |
+| Interface field — only if the name is ambiguous (skip `uri`, document `delegate`) | Conditional |
 
 ### Correct examples (from real module patterns)
 
 ```typescript
-/** Starts the change-stream watcher and dispatches events to the delegate. */
-public async start(options: ITriggerOptions): Promise<void> { ... }
+/** Manages secrets stored in AWS Secrets Manager or MongoDB CSFLE. */
+class SecretService extends BaseService {
 
-/** Apply env-var fallbacks for URI, database, and collection. */
-public async fill(args: string[] | IArgs): Promise<IArgs> { ... }
+    /**
+     * Retrieve the secret identified by key, using the configured backend.
+     * Backend is selected from config at construction time — AWS or MongoDB.
+     */
+    public async get(): Promise<void> { ... }
 
-/** Retrieve the secret identified by key, using the configured backend. */
-public async get(): Promise<void> { ... }
+    /**
+     * Apply env-var fallbacks for URI, database, and collection.
+     * @param {string[] | IArgs} args - Raw CLI arguments or pre-parsed map.
+     * @returns {Promise<IArgs>} Arguments with environment defaults applied.
+     */
+    public async fill(args: string[] | IArgs): Promise<IArgs> { ... }
 
-/** Prints help from src/docs/secret.txt. */
-public async help(): Promise<void> { ... }
+    /**
+     * Prints help from src/docs/secret.txt.
+     */
+    public async help(): Promise<void> { ... }
+
+    /**
+     * Starts the change-stream watcher and dispatches events to the delegate.
+     * Must be called after the IoC container is fully resolved.
+     */
+    public async start(options: ITriggerOptions): Promise<void> { ... }
+}
 ```
 
 ### Incorrect examples (violations)
 
 ```typescript
-// ❌ Too long — move detail to src/docs/<alias>.txt
-/**
- * Parses and normalises CLI arguments.
- * Called by the engine before the action method is dispatched.
- * Override to apply environment variable fallbacks and type coercions.
- */
-public async fill(...) {}
+// ❌ Collapsed single-line format — use multi-line block instead
+/** Retrieve the secret identified by key. */
+public async get(): Promise<void> {}
 
-// ❌ Restates the method name — no value
-/** Executes the execution. */
+// ❌ Restates the method name — no value added
+/**
+ * Executes the execution.
+ */
 public async execute() {}
 
 // ❌ Example in JSDoc — belongs in src/docs/<alias>.txt
@@ -882,24 +1106,24 @@ public async execute() {}
  */
 public async get() {}
 
-// ❌ @param for obvious arg — redundant
+// ❌ @param for obvious arg — type annotation already documents it
 /**
- * @param args Parsed CLI arguments
- * @returns Parsed CLI arguments with fallbacks applied
+ * @param {IArgs} args - Parsed CLI arguments.
+ * @returns {Promise<IArgs>} Parsed CLI arguments with fallbacks applied.
  */
 public async fill(args: IArgs): Promise<IArgs> {}
 ```
 
 ### Extended documentation goes to `src/docs/<alias>.txt`
 
-When a developer needs usage examples, parameter descriptions, flag tables, or any content
-longer than one sentence, write it in `src/docs/<alias>.txt`, not in JSDoc. That file is
+When a developer needs usage examples, flag tables, or any content that would span more than
+two lines in JSDoc, write it in `src/docs/<alias>.txt`, not in JSDoc. That file is
 distributed in the npm package, surfaced by `help()`, and readable by LLMs and documentation
 generators without executing the code.
 
 ---
 
-## 12. Inline module documentation (src/docs/my-module.txt)
+## 13. Inline module documentation (src/docs/my-module.txt)
 
 Every module with a CLI interface should ship a plain-text help file in `src/docs/`. This
 file is read and displayed verbatim by the `help()` action via the engine's `FileService`.
@@ -994,7 +1218,7 @@ Examples:
 
 ---
 
-## 13. Building and testing locally
+## 14. Building and testing locally
 
 ```bash
 # Install dependencies
@@ -1040,7 +1264,7 @@ Checklist after `npm run build`:
 
 ---
 
-## 14. The engine binary — why modules do not define their own `bin`
+## 15. The engine binary — why modules do not define their own `bin`
 
 `@kozen/engine` is the only package in the Kozen ecosystem that defines a CLI binary. All
 other modules are loaded by that binary at runtime via `--moduleLoad`.
@@ -1101,7 +1325,7 @@ dependency, npm symlinks `dist/bin/kozen.js` as the `kozen` executable. This is 
 
 ---
 
-## 15. Publishing to npm
+## 16. Publishing to npm
 
 ### Prerequisites
 
@@ -1243,7 +1467,7 @@ separately — it would build twice. Use `npm publish` directly in that case.
 
 ---
 
-## 16. Complete minimal module example
+## 17. Complete minimal module example
 
 The smallest valid Kozen module — one service, one CLI controller, no MCP:
 
@@ -1385,7 +1609,7 @@ npx kozen --moduleLoad=@scope/greeter --action=greeter:greet --name=Kozen
 
 ---
 
-## 17. Checklist before publishing
+## 18. Checklist before publishing
 
 ### Module code
 
