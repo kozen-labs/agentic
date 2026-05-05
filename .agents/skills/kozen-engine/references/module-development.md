@@ -660,6 +660,76 @@ directory — which is the host project's root, not the module's `dist/` directo
 Most developers ask: "Why not put everything in one `ioc.json`?" The answer is
 **conditional loading by runtime type**.
 
+### How dependency injection works — the key-to-parameter mapping
+
+Every entry in the `dependencies` array has a `"key"` field. That key becomes the **property
+name** on the `dependency` object the IoC container builds and passes to the class constructor.
+The TypeScript constructor must declare a matching parameter name to receive the injected
+instance.
+
+```
+JSON config                                TypeScript constructor
+─────────────────────────────────          ─────────────────────────────────────
+"key": "assistant" → target: "IoC"    →   dependency?.assistant  (IIoC)
+"key": "logger"    → target: "logger:service" → dependency?.logger (ILogger)
+"key": "srvFile"   → target: "core:file" →   dependency?.srvFile  (FileService)
+"key": "srvIAM"    → target: "iam:service" →  dependency?.srvIAM   (IIAMService)
+```
+
+**Concrete example — the same registration shown as JSON and TypeScript side-by-side:**
+
+```json
+{
+  "iam-rectification:controller:mcp": {
+    "target": "RectificationMCPController",
+    "type": "class",
+    "lifetime": "transient",
+    "path": "controllers",
+    "dependencies": [
+      { "key": "assistant", "target": "IoC",              "type": "ref" },
+      { "key": "logger",    "target": "logger:service",   "type": "ref" },
+      { "key": "srvFile",   "target": "core:file",        "type": "ref" },
+      { "key": "srvIAMScram","target": "iam:service:scram","type": "ref" },
+      { "key": "srvIAMX509","target": "iam:service:x509", "type": "ref" }
+    ]
+  }
+}
+```
+
+```typescript
+export class RectificationMCPController extends MCPController {
+
+  private srvFile?: FileService;
+  private srvIAMScram?: IIAMRectification;
+  private srvIAMX509?: IIAMRectification;
+
+  constructor(dependency?: {
+    assistant:  IIoC;
+    logger:     ILogger;
+    srvFile?:   FileService;
+    srvIAMScram?: IIAMRectification;
+    srvIAMX509?:  IIAMRectification;
+  }) {
+    super(dependency);                   // passes assistant + logger to KzController
+    this.srvFile     = dependency?.srvFile;
+    this.srvIAMScram = dependency?.srvIAMScram;
+    this.srvIAMX509  = dependency?.srvIAMX509;
+  }
+}
+```
+
+Key rules:
+- **`"target": "IoC"`** is the only reserved special token — it injects the container itself.
+- **`"target": "logger:service"`** resolves the engine's built-in `LoggerService` singleton.
+- **`"target": "core:file"`** resolves the engine's built-in `FileService` (CSV/JSON I/O).
+- Any other `"target"` value must be a token already registered in `ioc.json` (or the
+  merged overlay file) before Awilix resolves the current entry.
+- **`"type": "ref"`** is the only dependency type used in practice — it resolves by token name.
+- The constructor `dependency` object is always optional (`dependency?`) because the class
+  may also be instantiated directly in unit tests without an IoC container.
+
+
+
 ### `src/configs/ioc.json` — always loaded (core services)
 
 Contains the module's core services: everything needed regardless of how the module is used
@@ -1030,7 +1100,11 @@ source code.
 
 ### Injecting the logger via IoC
 
-Add the `logger` dependency to every service entry in `ioc.json`:
+`logger:service` is a pre-registered singleton in `@kozen/engine`. Every service or
+controller that wants to log simply declares `"key": "logger"` in its `dependencies` array
+and receives a `LoggerService` instance as `dependency.logger` in the constructor.
+
+**Service — ioc.json entry and matching TypeScript constructor:**
 
 ```json
 {
@@ -1047,8 +1121,55 @@ Add the `logger` dependency to every service entry in `ioc.json`:
 }
 ```
 
-The IoC container passes `{ assistant, logger }` to the constructor as the `dependency`
-argument inherited by `BaseService`.
+```typescript
+export class MyService extends BaseService {
+  constructor(dependency?: { assistant: IIoC; logger: ILogger }) {
+    super(dependency); // BaseService stores dependency.assistant → this.assistant
+                       //                    dependency.logger    → this.logger
+  }
+}
+```
+
+**Controller — cli.json entry with assistant, logger, and additional services:**
+
+```json
+{
+  "my-module:controller:cli": {
+    "target": "MyCLIController",
+    "type": "class",
+    "lifetime": "transient",
+    "path": "controllers",
+    "dependencies": [
+      { "key": "assistant",  "target": "IoC",              "type": "ref" },
+      { "key": "logger",     "target": "logger:service",   "type": "ref" },
+      { "key": "srvFile",    "target": "core:file",        "type": "ref" },
+      { "key": "srvMyModule","target": "my-module:service","type": "ref" }
+    ]
+  }
+}
+```
+
+```typescript
+export class MyCLIController extends CLIController {
+
+  private srvMyModule?: IMyService;
+
+  constructor(dependency?: {
+    assistant:    IIoC;
+    logger:       ILogger;
+    srvFile?:     FileService;  // engine built-in — CSV/JSON I/O utility
+    srvMyModule?: IMyService;   // registered in ioc.json of this module
+  }) {
+    super(dependency);                          // wires assistant + logger + srvFile
+    this.srvMyModule = dependency?.srvMyModule; // additional services stored manually
+  }
+}
+```
+
+The JSON `"key"` value is **always identical** to the TypeScript constructor parameter name.
+`super(dependency)` (inherited from `KzController`) stores `assistant`, `logger`, and
+`srvFile` automatically — any extra service key must be stored manually in the constructor
+body.
 
 ---
 
@@ -1181,21 +1302,34 @@ export class MyService extends BaseService {
 ### Logger in a controller — `getId()` and `wait()`
 
 ```typescript
-import { CLIController, ILogLevel } from '@kozen/engine';
-import type { IIoC, ILogger, IArgs, IConfig } from '@kozen/engine';
+import { CLIController } from '@kozen/engine';
+import type { IIoC, ILogger, IArgs, IConfig, FileService } from '@kozen/engine';
+import type { IMyService } from '../models/MyModel';
 
 export class MyCLIController extends CLIController {
 
-  constructor(dependency?: { assistant: IIoC; logger: ILogger }) {
-    super(dependency);
+  private srvMyModule?: IMyService;
+
+  // The constructor parameter names must match the "key" values in cli.json exactly.
+  constructor(dependency?: {
+    assistant:    IIoC;
+    logger:       ILogger;
+    srvFile?:     FileService;  // stored automatically by super()
+    srvMyModule?: IMyService;   // must be stored manually
+  }) {
+    super(dependency);                          // stores assistant, logger, srvFile
+    this.srvMyModule = dependency?.srvMyModule;
   }
 
+  /**
+   * Execute the action. Flow ID is generated once here and threaded to services.
+   */
   public async execute(options: IArgs): Promise<void> {
-    // Generate the flow ID once for this invocation
+    // getId() reads --flow from options or generates a YYYYMMDDHHMMSSXX timestamp
     const flow = this.getId(options as unknown as IConfig);
     try {
-      const svc = await this.assistant?.resolve<IMyService>('my-module:service');
-      await svc?.execute({ ...options, flow });
+      this.logger?.info({ flow, src: 'my-module:controller:execute', message: 'Action started' });
+      await this.srvMyModule?.execute({ ...options, flow });
       this.logger?.info({ flow, src: 'my-module:controller:execute', message: '✅ Done' });
     } catch (error) {
       this.logger?.error({
@@ -1212,6 +1346,11 @@ export class MyCLIController extends CLIController {
 
 `this.wait()` (inherited from `KzController`) calls `await Promise.all(this.logger.stack)`.
 Always call it at the end of every action that logs — especially before process exit.
+
+`this.srvMyModule` is used directly (injected via IoC, not resolved at call time) because
+the controller holds a reference set during construction. For services resolved lazily
+(only when needed), use `await this.assistant?.resolve<IMyService>('my-module:service')`
+inside the action method instead.
 
 ---
 
