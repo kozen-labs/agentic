@@ -270,6 +270,51 @@ Apply these GRASP responsibilities as a checklist when assigning behavior to a c
 
 ---
 
+### Async by default — never block the event loop
+
+Node.js runs on a single-threaded event loop. Any synchronous blocking call — file reads,
+DNS lookups, cryptographic operations — freezes the loop for every other concurrent
+operation (other requests, log flushes, timers). In a Kozen module running as an MCP server
+or long-lived daemon this is unacceptable.
+
+**Rule: use the async variant of every I/O API. The sync variant is forbidden unless the
+call is provably unreachable during normal operation and the performance impact is justified
+and documented.**
+
+```typescript
+// ✅ Correct — yields to the event loop while waiting for the file
+import { readFile } from 'fs/promises';
+const content = await readFile(path, 'utf-8');
+
+// ❌ Wrong — blocks the entire process until the file is read
+import { readFileSync } from 'fs';
+const content = readFileSync(path, 'utf-8');
+```
+
+The rule applies to every I/O boundary:
+
+| Domain | Use | Avoid |
+|---|---|---|
+| File system | `fs/promises` (`readFile`, `writeFile`, `mkdir`, …) | `fs.readFileSync`, `fs.writeFileSync`, … |
+| MongoDB driver | `await collection.findOne()`, `await cursor.toArray()` | synchronous cursor iteration |
+| Network / HTTP | `fetch`, `axios` with `await` | any blocking HTTP client |
+| Crypto | `crypto.subtle.*`, `bcrypt.hash()` | `crypto.hashSync`, `bcryptSync` |
+| Child processes | `execFile` / `spawn` with `await` | `execFileSync`, `spawnSync` |
+| `setTimeout` delays | `await new Promise(r => setTimeout(r, ms))` | `Atomics.wait()`, busy-wait loops |
+
+**The one narrow exception:** a synchronous call is acceptable only when all of these
+conditions are true simultaneously:
+
+1. It runs exclusively at **module startup** (inside `register()` or a constructor), before
+   any concurrent I/O has started.
+2. The data read is **small and bounded** (a local config file, a single JSON file).
+3. The sync call executes **at most once** per process lifetime.
+4. A JSDoc comment above the call states **why** the sync variant was chosen.
+
+If any condition is not met, use the async variant.
+
+---
+
 ## 3. package.json
 
 The template below matches the patterns used across `@kozen/trigger`, `@kozen/secret`, and
