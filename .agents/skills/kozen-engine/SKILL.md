@@ -10,7 +10,7 @@ description: >
   This skill is the primary reference for anyone building new tools, modules, or extensions
   for the Kozen ecosystem.
 created: 2026-05-03
-updated: 2026-05-03
+updated: 2026-05-06
 ---
 
 # Kozen Engine — Framework Reference
@@ -61,10 +61,78 @@ All module packages follow the same structural contract (see `references/module-
 
 ---
 
+## Working strategy — analyze, align, plan, execute
+
+Every task involving a Kozen module follows this four-step sequence. **Never skip to
+implementation without completing steps 1 and 2.**
+
+### Step 1 — Analyze before touching anything
+
+Read all relevant artifacts before writing a single line of code or configuration:
+
+| Artefact | What to verify |
+|---|---|
+| `src/index.ts` | Exported classes, interfaces, and types — public API surface |
+| `src/configs/ioc.json`, `*.json` | Registered tokens, lifetimes, dependency keys |
+| `src/controllers/*.ts` | Actions, `fill()` overrides, env-var fallbacks |
+| `src/services/*.ts` | Business logic, constructor signatures, error handling |
+| `src/models/*.ts` | Existing interfaces — avoid duplication |
+| `src/docs/<alias>.txt` | Documented flags, env vars, default values |
+| `package.json` | Name, version, scripts, `files`, `main`, `types` |
+| `tsconfig.json` | `include`, `outDir`, path aliases |
+| Existing reference modules (`@kozen/secret`, `@kozen/trigger`, `@kozen/iam-rectification`) | Established patterns to reuse or align with |
+
+### Step 2 — Surface ambiguities before proceeding
+
+After the analysis, identify every point that is unclear, missing, or inconsistent. For each
+one, ask a focused question. Do not assume an answer and proceed — a wrong assumption
+discovered after implementation costs far more than a clarifying question asked upfront.
+
+Common triggers for a clarifying question:
+
+- A required field or parameter is not documented anywhere in the source.
+- Two existing modules follow different conventions for the same thing (e.g., different token
+  naming patterns, different env-var prefixes) — ask which one is authoritative.
+- The requested change conflicts with an existing pattern or a rule in this skill.
+- It is unclear whether a new class should be a service, a utility function, or a separate npm
+  package.
+- The lifetime (`singleton` / `transient`) of a new IoC registration is ambiguous.
+
+Ask all questions together in one message so the user can answer them in a single round.
+
+### Step 3 — Write a plan and get approval
+
+Once the analysis is complete and all ambiguities are resolved, write a plan file:
+
+```
+tmp/plan-<short-description>.md
+```
+
+The plan must include:
+
+1. **Summary** — one paragraph describing what will change and why.
+2. **Files to create or modify** — listed with the reason for each change.
+3. **Key decisions** — any non-obvious choice made (lifetime, naming, file placement) with
+   a brief justification.
+4. **Out of scope** — anything explicitly excluded to prevent scope creep.
+
+Present the plan to the user and wait for explicit approval before writing any production
+code. If the user requests changes to the plan, update the file and present it again.
+
+### Step 4 — Apply changes, then clean up
+
+Once the plan is approved:
+
+1. Apply all changes exactly as described in the plan.
+2. Verify the checklist in Section 19 of `references/module-development.md`.
+3. Delete the plan file from `tmp/` — it is a working artefact, not a permanent document.
+
+---
+
 ## Do & Don't
 
 **Do:**
-- Use JSDoc (`/** ... */`) for all public classes and methods; keep every comment to one line.
+- Use JSDoc format for all public classes and methods; keep every comment as simple as possible.
 - Document the WHY (non-obvious constraints, side effects) — never restate what the name already says.
 - Apply KISS first: the simplest correct solution wins over any pattern.
 - Cap class hierarchies at two levels (base + one subclass) to avoid the yo-yo problem.
