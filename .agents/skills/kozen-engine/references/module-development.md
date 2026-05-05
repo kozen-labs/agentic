@@ -638,8 +638,8 @@ export class MyCLIController extends KzController {
     });
 
     const options = {
-      key:    args.key    || process.env.MY_KEY    || '',
-      driver: args.driver || process.env.MY_DRIVER || 'default'
+      key:    args.key    || process.env.KOZEN_MY_MODULE_KEY    || '',
+      driver: args.driver || process.env.KOZEN_MY_MODULE_DRIVER || 'default'
     };
 
     const result = await this.srvMyModule?.execute(options);
@@ -653,8 +653,8 @@ export class MyCLIController extends KzController {
    */
   public async fill(args: string[] | IArgs): Promise<IArgs> {
     const parsed = await super.fill(args);
-    parsed['key']    = parsed['key']    || process.env.MY_KEY;
-    parsed['driver'] = parsed['driver'] || process.env.MY_DRIVER || 'default';
+    parsed['key']    = parsed['key']    || process.env.KOZEN_MY_MODULE_KEY;
+    parsed['driver'] = parsed['driver'] || process.env.KOZEN_MY_MODULE_DRIVER || 'default';
     return parsed;
   }
 }
@@ -670,6 +670,41 @@ Key patterns:
   the `docs/` directory. Configure it with `"args": [{ "dir": "./docs" }]` (or the engine
   default). See section 11 for the docs file format.
 - **Generate and carry the flow ID** through every log call for distributed tracing.
+- **Env var naming: `KOZEN_<MODULE_ALIAS>_<PARAM>`.** See the naming convention below.
+
+### Environment variable naming convention
+
+All environment variables introduced by a Kozen module must follow this pattern:
+
+```
+KOZEN_<MODULE_ALIAS>_<PARAMETER>
+```
+
+Where `MODULE_ALIAS` is the value of `this.metadata.alias`, uppercased, with hyphens
+replaced by underscores.
+
+| Module alias | Prefix | Example variable |
+|---|---|---|
+| `trigger` | `KOZEN_TRIGGER_` | `KOZEN_TRIGGER_URI`, `KOZEN_TRIGGER_DB` |
+| `iam-rectification` | `KOZEN_IAM_RECTIFICATION_` | `KOZEN_IAM_RECTIFICATION_URI` |
+| `my-module` | `KOZEN_MY_MODULE_` | `KOZEN_MY_MODULE_KEY`, `KOZEN_MY_MODULE_DRIVER` |
+
+**Exception — reuse existing well-known variables.** When the parameter maps directly to an
+established ecosystem convention, use that convention instead of inventing a new prefixed name:
+
+| Existing variable | Use instead of | Context |
+|---|---|---|
+| `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | `KOZEN_SECRET_AWS_REGION` etc. | AWS SDK reads these natively |
+| `MDB_MASTER_KEY` | `KOZEN_SECRET_MASTER_KEY` | Established MongoDB CSFLE convention across the ecosystem |
+| `MDB_URI`, `MONGODB_URI` | `KOZEN_MY_MODULE_URI` | Only when the variable is already present in the project's `.env` by convention |
+
+The rule of thumb: if the variable would already exist in the user's environment from another
+tool or SDK, reuse it. If it is new and Kozen-specific, prefix it.
+
+**Apply the convention consistently in three places:**
+1. `fill()` in the CLI controller — `process.env.KOZEN_MY_MODULE_PARAM`
+2. `src/docs/<alias>.txt` — list the variable in the `Environment Variables` section
+3. The module's wiki `Configuration.md` page — document it in the env vars table
 
 ### Dynamic action naming (IAM-rectification pattern)
 
@@ -825,12 +860,12 @@ Available Actions:
   --<param3>       <Description>. Options: value1 | value2.
 
 Environment Variables:
-  KOZEN_CONFIG           Path to config.json
-  KOZEN_ACTION           Default action
-  KOZEN_STACK            Environment name
-  KOZEN_PROJECT          Project ID
-  MY_MODULE_PARAM1       <Description>
-  MY_MODULE_PARAM2       <Description>
+  KOZEN_CONFIG                 Path to config.json
+  KOZEN_ACTION                 Default action
+  KOZEN_STACK                  Environment name
+  KOZEN_PROJECT                Project ID
+  KOZEN_MY_MODULE_PARAM1       <Description>. Maps to --param1.
+  KOZEN_MY_MODULE_PARAM2       <Description>. Maps to --param2.
 
 Backend Providers:
   <provider1>    <One-line description>
@@ -848,7 +883,7 @@ Examples:
   kozen --module=my-module --action=action2 --param2=value --stack=prod
 
   # Using environment variables only
-  MY_MODULE_PARAM1=value KOZEN_ACTION=my-module:action1 kozen
+  KOZEN_MY_MODULE_PARAM1=value KOZEN_ACTION=my-module:action1 kozen
 ```
 
 ### Rules for the docs file

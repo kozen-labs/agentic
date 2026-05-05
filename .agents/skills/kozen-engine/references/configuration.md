@@ -334,6 +334,61 @@ Used for auto-registering pipeline components.
 
 ---
 
+## Module environment variable naming convention
+
+Every new variable introduced by a Kozen module must follow this pattern:
+
+```
+KOZEN_<MODULE_ALIAS>_<PARAMETER>
+```
+
+`MODULE_ALIAS` is `this.metadata.alias` uppercased with hyphens replaced by underscores.
+
+```
+# alias: trigger         → prefix: KOZEN_TRIGGER_
+KOZEN_TRIGGER_URI=mongodb://localhost:27017
+KOZEN_TRIGGER_DB=appDb
+KOZEN_TRIGGER_COLLECTION=orders
+
+# alias: iam-rectification  → prefix: KOZEN_IAM_RECTIFICATION_
+KOZEN_IAM_RECTIFICATION_URI=mongodb://localhost:27017
+KOZEN_IAM_RECTIFICATION_USER=appUser
+
+# alias: my-module        → prefix: KOZEN_MY_MODULE_
+KOZEN_MY_MODULE_KEY=my-secret-key
+KOZEN_MY_MODULE_DRIVER=default
+```
+
+### When to reuse an existing variable instead
+
+Do NOT invent a new `KOZEN_*` variable when an established ecosystem convention already covers
+the parameter. Use the existing name as-is:
+
+| Scenario | Use the existing variable | Reason |
+|---|---|---|
+| AWS SDK credentials | `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | AWS SDK reads these natively; duplicating them under `KOZEN_*` forces users to set the same value twice |
+| MongoDB CSFLE master key | `MDB_MASTER_KEY` | Established convention across MongoDB tooling in this ecosystem |
+| MongoDB URI already set project-wide | `MDB_URI` or `MONGODB_URI` | The user's project may already define one of these; prefer it over a new `KOZEN_*` name |
+
+### Where to apply the convention
+
+The variable name must be consistent across all three locations:
+
+1. **`fill()` in the CLI controller** — where the fallback is read:
+   ```typescript
+   parsed['key'] = parsed['key'] || process.env.KOZEN_MY_MODULE_KEY;
+   ```
+
+2. **`src/docs/<alias>.txt`** — listed in the `Environment Variables` section:
+   ```
+   KOZEN_MY_MODULE_KEY    The target key. Maps to --key.
+   ```
+
+3. **Wiki `Configuration.md`** — documented in the env vars table with name, CLI equivalent,
+   default value, and description.
+
+---
+
 ## Logger configuration in config.json
 
 ```json
