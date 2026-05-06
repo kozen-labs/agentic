@@ -1793,16 +1793,39 @@ npm notice total files:   18
 
 ### First publish of a scoped package
 
-```bash
-# Scoped packages (@kozen/*, @scope/*) default to private — must pass --access public
-npm publish --access public
+Scoped packages (`@kozen/*`, `@scope/*`) default to **private** on the npm registry. Without
+the correct configuration, the publish command fails with a 403 error like this:
 
-# Or use the publishConfig in package.json (already set) and run without the flag:
+```
+npm error code E403
+npm error 403 Forbidden - PUT https://registry.npmjs.org/@kozen%2fetl-mk
+npm error 403 Two-factor authentication or granular access token with bypass 2fa enabled
+npm error 403 is required to publish packages.
+```
+
+Despite the 2FA wording, the root cause is almost always that npm is trying to publish a
+scoped package as private. The fix is to include `publishConfig` in `package.json`:
+
+```json
+"publishConfig": {
+  "access": "public"
+}
+```
+
+With this field present, a plain `npm publish` publishes publicly without any extra flag:
+
+```bash
 npm publish
 ```
 
-The `publishConfig.access: "public"` in `package.json` removes the need for `--access public`
-on every publish. Verify it is set before the first publish.
+Without `publishConfig`, you must pass the flag on every publish:
+
+```bash
+npm publish --access public
+```
+
+Always use `publishConfig` — it removes the need to remember the flag and prevents the 403
+from appearing in CI pipelines where the flag is easy to omit.
 
 ### Subsequent publishes — version bump strategy
 
