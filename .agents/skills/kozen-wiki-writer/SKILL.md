@@ -38,8 +38,8 @@ the issue section of `references/issues.md` can be extracted then.
 | Signal | Reference |
 |---|---|
 | publication mode, GitHub wiki, docs folder, tmp/wiki, where to put wiki files, git wiki repo, github pages, docs vs wiki, ask user publication, publish kozen wiki | `references/publication-modes.md` |
-| file naming, navigation footer, previous next links, emoji heading, heading structure, link format, absolute URL wiki, code block convention, table convention, tone voice, emoji mapping, page order, PascalCase hyphen | `references/conventions.md` |
-| what to document, page types, Home page minimal, Home README parity, README.md same as Home, npm readme, pypi readme, Get-Started page, Configuration page, API page, CLI page, MCP page, Delegate page, POLICY page, licence page, disclaimer page, escalated content, progressive disclosure, no duplication rule, bibliography section, references section, entry point analysis, exported classes wiki, src/index.ts wiki, source analysis checklist, what to read before writing, practical code examples, runnable snippet, example per page, when to include examples, complete example, realistic example, TypeScript example | `references/content-structure.md` |
+| file naming, navigation footer, previous next links, emoji heading, heading structure, emoji on H3 numbered steps, link format, absolute URL wiki, code block convention, table convention, tone voice, emoji mapping, emoji map, semantic emoji, page order, PascalCase hyphen, Note pattern, Note block after code, contextual note, kozen-labs URL, wiki URL pattern, GitHub wiki URL, module display name, human-friendly name, npm package name vs display name, expand abbreviations, Markdown first, avoid HTML, no HTML tags, GFM, GitHub Flavored Markdown | `references/conventions.md` |
+| what to document, page types, Home page minimal, Home README parity, README.md same as Home, npm readme, pypi readme, SEO Home, SEO optimization wiki, incite exploration, problem-solution framing, discoverability, H1 module name, first paragraph lede, Get-Started page, Get-Started numbered steps, step by step template, Get-Started emoji steps, Configuration page, API page, CLI page, MCP page, Delegate page, POLICY page, licence page, disclaimer page, escalated content, progressive disclosure, no duplication rule, bibliography section, references section, entry point analysis, exported classes wiki, src/index.ts wiki, source analysis checklist, what to read before writing, practical code examples, runnable snippet, example per page, when to include examples, complete example, realistic example, TypeScript example | `references/content-structure.md` |
 | GitHub Issues, issue template, create issue, write issue, issue structure, issue title, issue description, bug report, feature request, issue location, consequences, reproduction steps, possible solutions, tmp/issues, docs/issues, issue publication mode, standardised issues, project management docs, source audit findings, code review findings, classify findings, identify problems, detect issues, improve module | `references/issues.md` |
 
 ---
@@ -127,9 +127,16 @@ Ask all three questions before generating any file. Defaults are shown in parent
 - Write Home.md last — it links to every other page.
 - Keep Home.md minimal: high-level overview, key features, one install command, links. No API details.
 - Mirror Home.md content in README.md so the module is navigable from GitHub, npm, and PyPI.
-- Use the exact navigation footer format from `references/conventions.md`.
-- Add emojis only to H1 and H2 headings.
-- Use absolute GitHub wiki URLs for all internal wiki links.
+- Add emojis to H1 and H2 headings on **every** page — Home, README, and all wiki pages. No page is exempt.
+- Add emojis to H3 headings in Get-Started numbered steps (e.g., `### 📥 1. Install`). Use semantically relevant emojis from the map in `references/conventions.md`.
+- Use the exact navigation footer format from `references/conventions.md` on every page.
+- Use `**Note:**` blocks after code blocks to explain context, caveats, and alternatives (see `references/conventions.md`).
+- Write Home.md H1 as `# [emoji] [Module Name] — [one-line function]` for SEO discoverability.
+- Write the first paragraph of Home.md as a problem-solution statement that incites the reader to explore further.
+- Use the human-friendly display name in all headings and prose — never the npm package name (e.g., `Kozen Trigger`, not `@kozen/trigger`). Reserve the npm name for `npm install` commands, `import` statements, and `KOZEN_MODULE_LOAD` values.
+- Default all repository and wiki URLs to `https://github.com/kozen-labs/` unless the user explicitly specifies a different organization.
+- Write everything in Markdown (GFM). Use HTML only when Markdown has no equivalent and the user requests it, or for `<details>/<summary>` collapsible sections.
+- Use absolute GitHub wiki URLs (`https://github.com/kozen-labs/<module>/wiki/<Page>`) for all internal wiki links.
 - Add a References section to every page that cites external resources.
 - Verify every API signature against `src/index.ts` before writing.
 - Verify every CLI action and flag against `src/docs/*.txt` before writing.
@@ -141,5 +148,10 @@ Ask all three questions before generating any file. Defaults are shown in parent
 - Never invent API signatures — read the source first.
 - Never skip the navigation footer, even on the last page.
 - Never omit POLICY.md — it is a legal requirement for open source modules.
-- Never add emojis to H3 or lower headings.
+- Never add emojis to H3 or lower headings except for numbered steps in Get-Started sections.
+- Never write a Home.md H1 as just `# Home` or `# [Module Name]` without a function description — it harms SEO.
+- Never use the npm package name (`@kozen/etl-mk`) as the display name in headings or prose — derive a human-friendly name and confirm with the user if ambiguous.
+- Never reference a GitHub organization other than `kozen-labs` unless the user explicitly provides a different URL.
+- Never use HTML tags (`<div>`, `<span>`, `<p>`, `<h2>`, `<a>`, etc.) when Markdown syntax exists for the same purpose.
 - Never use em dashes (`—`) as body-text connectors (only in the navigation footer and table cells).
+- Never write a `**Note:**` that repeats information already in the code block or the sentence immediately before it.

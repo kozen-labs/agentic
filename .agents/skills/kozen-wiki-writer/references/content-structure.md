@@ -172,6 +172,41 @@ If the answer to any item is no, revise the example before publishing the page.
 
 ## Page type templates
 
+### SEO and discoverability for Home.md and README.md
+
+`Home.md` and `README.md` are the entry point on GitHub, npm, and PyPI. They are also the
+pages indexed by search engines. Write them with both human readers and search indexers in
+mind.
+
+**SEO rules:**
+
+1. **H1 contains the module name and its primary function** — search engines weight H1 heavily.
+   Bad: `# Home` — Good: `# 🚀 Kozen Trigger — MongoDB Change Stream Event Handler`
+2. **First paragraph (under H1, before any H2)** — the lede. It must contain the primary
+   keyword (module name) and state clearly what problem this solves. One to three sentences.
+   Search engines use this as the page description snippet.
+3. **Problem-solution framing in Why Use This** — start with the pain point the reader feels,
+   then present the module as the solution. This increases click-through and time on page.
+4. **Concrete, specific feature bullets** — "Supports SCRAM and X.509 authentication" ranks
+   better than "Flexible authentication". Specific language signals relevance.
+5. **Links to all pages from Home.md** — internal linking boosts all pages' discoverability
+   and keeps readers on the wiki.
+6. **Do not keyword-stuff** — every sentence must be genuinely useful to a human reader.
+   Write for developers first; good prose naturally contains the right terms.
+
+**Incite exploration — the Home.md tone rule:**
+
+`Home.md` must make the reader want to keep reading. Every section should answer an implicit
+question: "Why does this matter to me?" Apply this test to every bullet point and paragraph:
+
+- Does this show a concrete, relatable problem?
+- Does this show that the module solves it specifically, not generically?
+- Does this link to a page where the reader can immediately act on what they just learned?
+
+If a paragraph answers none of those questions, it does not belong on `Home.md`.
+
+---
+
 ### Home.md = README.md parity rule
 
 `Home.md` (GitHub Wiki) and `README.md` (repository root) must contain **identical content**.
@@ -227,17 +262,108 @@ Do NOT put configuration details, API signatures, or CLI flag tables on Home.md.
 
 ### Get-Started.md
 
-Required sections:
-
-1. **Prerequisites** — Node.js version, required environment variables.
-2. **Installation** — `npm install @scope/module-name`.
-3. **Minimal configuration** — the smallest `.env` or config that makes the module work.
-4. **First command** — one copy-paste CLI invocation that produces visible output.
-5. **Verify it worked** — what to look for in the output to confirm success.
-6. **Next steps** — links to Configuration.md for full options, and CLI/MCP pages.
-7. **Navigation footer**
-
 Get-Started must be completable in under 5 minutes for a developer who has never used Kozen.
+It uses a canonical numbered-step format — every step gets an H3 heading with a semantically
+relevant emoji.
+
+#### Canonical numbered-step template
+
+```markdown
+## 🚀 Simple Demo: Step by Step
+
+Follow these steps to install, configure, and run [Module Name] locally or in your environment.
+
+### 📥 1. Install
+
+Install the module in your project.
+
+```shell
+npm install @kozen/<module-name>
+```
+
+Check the Kozen CLI documentation:
+
+```shell
+npx kozen --action=help
+```
+
+Check the module documentation within Kozen:
+
+```shell
+npx kozen --moduleLoad=@kozen/<module-name> --action=<alias>:help
+```
+
+### [emoji] 2. [Second step — e.g., Create the delegate / Create a config / Set credentials]
+
+[One sentence introducing what the reader is about to do and why.]
+
+[Code block with the file path as a comment on the first line]
+
+**Note:** [Explain what the reader should know about this step that is not obvious from the
+code — alternatives, what is required vs optional, what happens if they skip it.]
+
+### 📝 3. Create the env file
+
+Provide connection details and module configuration.
+
+FILE: `/home/user/.env`
+
+```env
+KOZEN_LOG_LEVEL=INFO
+KOZEN_LOG_TYPE=object
+KOZEN_MODULE_LOAD=@kozen/<module-name>
+
+KOZEN_<ALIAS>_<PARAM>=<value>
+...
+```
+
+**Note:** This file is a convenient way to load local environment variables without modifying
+your system configuration. If you prefer, you can define the same variables at the OS level,
+and this file will not be required.
+
+For the full list of options, see [Configuration](<base-url>/wiki/Configuration).
+
+### 🧑‍💻 4. Start the service
+
+[One sentence describing what this command does.]
+
+```shell
+npx kozen --action=<alias>:<action> --envFile=/home/user/.env
+```
+
+**Note:** Include `--envFile=/home/user/.env` only if you want to load local environment
+variables. If all variables are already set in the global environment, this option is not
+required.
+
+### 🔍 5. Observe logs
+
+Confirm startup and see the output when the module processes events.
+
+```
+[Paste a realistic log block here — real field values, real flow IDs, no placeholder text]
+```
+
+**Note:** [Explain what produced these logs, which env var controls verbosity, and whether
+using the native logger is optional or recommended.]
+```
+
+#### Step emoji guide for Get-Started
+
+| Step type | Emoji |
+|---|---|
+| Install / download | 📥 |
+| Create a file (delegate, handler, config) | 🤖 (delegate), 📝 (config/env), 📄 (general file) |
+| Set credentials or authenticate | 🔑 |
+| Start / run / launch | 🧑‍💻 |
+| Verify / observe / check output | 🔍 |
+| Test or validate | ✅ |
+
+Required sections (in order):
+
+1. **Prerequisites** — Node.js version, required external accounts (AWS, MongoDB Atlas, etc.).
+2. **The numbered steps section** (`## 🚀 Simple Demo: Step by Step`) with all steps.
+3. **Next steps** — links to Configuration.md, the CLI page, the MCP page.
+4. **Navigation footer**
 
 ### Configuration.md
 
@@ -427,9 +553,17 @@ If no banner exists, omit the image entirely. Never use a placeholder image.
 
 **Format:**
 - [ ] Every page has a navigation footer with correct Previous/Next links
-- [ ] Emojis appear only on H1 and H2 headings
+- [ ] Every page (Home, README, all wiki pages) has emojis on H1 and H2 headings
+- [ ] Get-Started numbered steps use per-step emojis on H3 headings
 - [ ] All internal links use absolute GitHub wiki URLs (Mode A) or relative paths (Mode B)
 - [ ] Every page that cites an external resource has a References section
+- [ ] All `**Note:**` blocks follow the pattern in `references/conventions.md`
+
+**SEO and discoverability (Home.md and README.md only):**
+- [ ] H1 contains the module name and its primary function (not just "Home")
+- [ ] First paragraph under H1 states the problem solved and the solution in 1–3 sentences
+- [ ] "Why Use This?" uses problem-solution framing, not feature listing
+- [ ] Home.md links to every other wiki page from its References section
 
 **Legal:**
 - [ ] POLICY.md exists and includes licence (from package.json `license` field)
