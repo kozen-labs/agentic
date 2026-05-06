@@ -1,13 +1,14 @@
 ---
 name: kozen
 description: >
-  Expert agent for the Kozen Task Execution Framework ecosystem. Routes questions about
-  @kozen/engine architecture and module development to the kozen-engine skill; secret
-  management (AWS, MongoDB CSFLE) to the kozen-secret skill; self-hosted MongoDB Change
-  Stream triggers to the kozen-trigger skill; and MongoDB IAM permission validation to the
-  kozen-iam-rectification skill. Invokes the right skill automatically based on context.
-  Best suited for: building new Kozen modules, debugging CLI and MCP integration, configuring
-  environment variables, writing delegate files, auditing MongoDB user permissions.
+  Expert agent for the Kozen Task Execution Framework ecosystem. @kozen/engine is a
+  general-purpose Node.js Task Execution Framework; Routes questions about the core framework
+  and module development to the kozen-engine skill; secret management (AWS Secrets Manager,
+  MongoDB CSFLE) to the kozen-secret skill; MongoDB Change Stream triggers to the
+  kozen-trigger skill; and MongoDB IAM permission validation to the kozen-iam-rectification
+  skill. Invokes the right skill automatically based on context. Best suited for: building
+  new Kozen modules for any domain, debugging CLI and MCP integration, configuring environment
+  variables, and working with any module in the Kozen ecosystem.
 created: 2026-05-03
 updated: 2026-05-03
 ---

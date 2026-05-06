@@ -50,12 +50,19 @@ core engine.
 
 ## Ecosystem overview
 
+`@kozen/engine` has no dependency on any specific backend. It is a
+general-purpose Task Execution Framework. The modules listed below are domain integrations
+built on top of the engine — they are optional and independently published.
+
 ```
-@kozen/engine          ← npm package; installs the kozen CLI binary
-@kozen/secret          ← module: AWS + MongoDB CSFLE secret management
-@kozen/trigger         ← module: self-hosted MongoDB Change Stream triggers
-@kozen/iam-rectification  ← module: MongoDB IAM role/permission validation
+@kozen/engine             ← core framework; installs the kozen CLI binary;
+@kozen/secret             ← optional module: AWS Secrets Manager + MongoDB CSFLE
+@kozen/trigger            ← optional module: self-hosted MongoDB Change Stream triggers
+@kozen/iam-rectification  ← optional module: MongoDB IAM permission validation
 ```
+
+A module can integrate any service or API. MongoDB appears in several existing modules
+because the original use cases required it — not because the framework requires it.
 
 All module packages follow the same structural contract (see `references/module-development.md`).
 

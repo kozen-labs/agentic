@@ -322,9 +322,9 @@ The template below matches the patterns used across `@kozen/trigger`, `@kozen/se
 
 ```json
 {
-  "name": "@scope/my-module",
+  "name": "@kozen/my-module",
   "version": "1.0.0",
-  "description": "Kozen module that provides [domain] capabilities",
+  "description": "One-sentence description of what this module does",
 
   "main":  "dist/index.js",
   "types": "dist/index.d.ts",
@@ -349,22 +349,27 @@ The template below matches the patterns used across `@kozen/trigger`, `@kozen/se
     "mcp:dev":      "npx -y @modelcontextprotocol/inspector npm run bin:kozen:ts -- --type=mcp",
     "bin:kozen:ts": "ts-node node_modules/@kozen/engine/dist/bin/kozen.js",
     "bin:kozen:js": "npx kozen",
-    "versions":     "npm view @scope/my-module versions",
+    "versions":     "npm view @kozen/my-module versions",
     "publish":      "npm run build && npm publish",
     "clean":        "rm -rf dist"
   },
 
-  "keywords": ["kozen", "mongodb", "my-domain"],
-  "author":   "Your Name or Organisation",
-  "license":  "MIT",
+  "keywords": ["kozen", "kozen-module", "my-domain"],
+
+  "author": {
+    "name":  "Kozen Labs Team",
+    "email": "kozenlabs@gmail.com",
+    "url":   "https://github.com/orgs/kozen-labs/repositories"
+  },
+  "license": "Apache-2.0",
 
   "engines": { "node": ">=18" },
 
-  "homepage": "https://github.com/your-org/my-module/wiki",
-  "bugs":     { "url": "https://github.com/your-org/my-module/issues" },
+  "homepage":   "https://github.com/kozen-labs/my-module/wiki",
+  "bugs":       { "url": "https://github.com/kozen-labs/my-module/issues" },
   "repository": {
     "type": "git",
-    "url":  "git+https://github.com/your-org/my-module.git"
+    "url":  "git+https://github.com/kozen-labs/my-module.git"
   },
 
   "dependencies": {
@@ -386,9 +391,17 @@ The template below matches the patterns used across `@kozen/trigger`, `@kozen/se
 
 | Field / script | Rule |
 |---|---|
+| `name` | Must be `@kozen/<module-repo-name>` (scoped). The npm package name is only used in `npm install` commands, `import` statements, and `KOZEN_MODULE_LOAD` values — never in headings or prose |
+| `description` | One-sentence summary of what the module does. Read at runtime into `this.metadata.summary` — keep it accurate |
+| `author` | Object form with `name`, `email`, and `url`. Use `"Kozen Labs Team"` / `"kozenlabs@gmail.com"` / `"https://github.com/orgs/kozen-labs/repositories"`. The `name` value is read at runtime into `this.metadata.author` |
+| `license` | `"Apache-2.0"` (SPDX format). Must match the `LICENSE` file in the repository. Read at runtime into `this.metadata.license` |
+| `homepage` | Must point to the GitHub wiki: `https://github.com/kozen-labs/<module>/wiki`. Read at runtime into `this.metadata.uri` — used in `help()` output to tell users where to find the full docs |
+| `bugs.url` | Must point to `https://github.com/kozen-labs/<module>/issues` — the canonical place to report problems |
+| `repository.url` | Must use `git+https://github.com/kozen-labs/<module>.git` format (the `git+` prefix is required by npm) |
+| `keywords` | `"kozen"` and `"kozen-module"` are mandatory for npm discoverability; add domain-specific terms after them (e.g., `"mongodb"` only if the module actually integrates MongoDB, `"aws"` only if it integrates AWS) — do not include `"mongodb"` by default |
 | `main` / `types` | Must point to `dist/index.js` / `dist/index.d.ts` (see rootDir rule in section 3) |
 | `files` | `"dist/*"` publishes only compiled output — `src/`, `cfg/`, and `.env` files are excluded |
-| `publishConfig.access` | `"public"` is required for all `@scope/*` packages; without it npm defaults to private |
+| `publishConfig.access` | `"public"` is required for all `@scope/*` packages; without it npm defaults to private and publish fails with a 403 error |
 | `@kozen/engine` in `dependencies` | Must be a runtime `dependency`, not `devDependency`; it is imported at module execution time |
 | `zod` | Add to `dependencies` only if the module defines MCP tools (Zod schemas for `inputSchema`); omit otherwise |
 | `cross-env` | Add to `devDependencies` when scripts need cross-platform environment variable assignment |
@@ -2037,8 +2050,6 @@ npx kozen --moduleLoad=@scope/greeter --action=greeter:greet --name=Kozen
 
 ### Module code
 
-### Module code
-
 | Check | Why |
 |---|---|
 | `this.metadata.alias` is set and unique across loaded modules | Action routing breaks without it |
@@ -2054,14 +2065,19 @@ npx kozen --moduleLoad=@scope/greeter --action=greeter:greet --name=Kozen
 
 | Check | Why |
 |---|---|
+| `description` is a clear one-liner | Read into `this.metadata.summary`; displayed by `npm info` and on npmjs.com |
+| `author` is an object with `name`, `email`, and `url` | `name` is read into `this.metadata.author`; displayed in CLI help output |
+| `license` is `"Apache-2.0"` (SPDX) and matches the `LICENSE` file | Read into `this.metadata.license`; displayed in CLI help output |
+| `keywords` includes `"kozen"` and `"kozen-module"` | Required for npm search discoverability |
+| `homepage` points to `https://github.com/kozen-labs/<module>/wiki` | Read into `this.metadata.uri`; printed by `help()` as the docs URL |
+| `bugs.url` points to `https://github.com/kozen-labs/<module>/issues` | Surfaced by `npm info` so users know where to report problems |
+| `repository.url` uses `git+https://github.com/kozen-labs/<module>.git` | Standard npm convention; the `git+` prefix is required by some tools |
 | `"files": ["dist/*", "LICENSE", "README.md"]` | Prevents `src/`, `cfg/`, and credentials from being published |
-| `publishConfig.access: "public"` set | Scoped packages default to private on npm |
+| `publishConfig.access: "public"` set | Scoped packages default to private on npm; omitting this causes a 403 on first publish |
 | `"engines": { "node": ">=18" }` present | Documents the runtime requirement; CI tools enforce it |
 | `@types/node` version in `devDependencies` matches `engines.node` major | Mismatched types cause spurious build errors |
 | `zod` in `dependencies` only if the module defines MCP tools | Adding it unconditionally bloats packages that don't use Zod |
 | `test` script present (placeholder or real) | `npm test` must exit cleanly — CI pipelines call it unconditionally |
-| `bugs.url` and `homepage` fields set | `help()` and `npm info` surface these to users |
-| `repository.url` uses `git+https://` prefix | Standard npm convention; some tools parse it |
 
 ### Documentation
 
