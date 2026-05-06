@@ -26,7 +26,7 @@ tags:
 ## Source analysis checklist
 
 Read these files in the module source code **before** writing any wiki page. Never invent
-API signatures, options, or behaviour — derive everything from the source.
+API signatures, options, or behaviour: derive everything from the source.
 
 | Source file | What to extract |
 |---|---|
@@ -47,10 +47,10 @@ The entry point is the single most important file for wiki documentation. It dec
 the public contract of the module. Every export must appear on the API/Integration page.
 
 Checklist for `src/index.ts`:
-- [ ] Module class (the `KzModule` subclass) — document `metadata.alias`, `register()` behaviour
-- [ ] All service classes — document in API page
-- [ ] All interface exports (`I*`) — document fields in API page
-- [ ] All type exports — document in API page
+- [ ] Module class (the `KzModule` subclass): document `metadata.alias`, `register()` behaviour
+- [ ] All service classes: document in the API page
+- [ ] All interface exports (`I*`): document fields in the API page
+- [ ] All type exports: document in the API page
 - [ ] Controller exports (rarely needed by users, but note they exist)
 - [ ] Re-exported utilities from `@kozen/engine` (if any)
 
@@ -126,14 +126,13 @@ rules on every page that includes code.
   unexplained prerequisites. If a snippet requires a prior step (install, env var, running
   server), say so in a sentence before the block.
 - **Realistic values** (see `references/conventions.md`): use `mydb`, `orders`, `appUser`,
-  `MY_SECRET_KEY` — never `foo`, `bar`, `test`, or `example`.
+  `MY_SECRET_KEY`. Never use `foo`, `bar`, `test`, or `example`.
 - **Labelled with a file comment**: the first line of each snippet tells the reader which
   file it belongs to.
   ```typescript
   // src/services/MyService.ts
   ```
-- **Language tag on every block**: `typescript`, `bash`, `json`, `yaml` — never a plain
-  fenced block.
+- **Language tag on every block**: always specify the language (`typescript`, `bash`, `json`, `yaml`). Never use a plain fenced block.
 - **Expected output where it adds clarity**: show what the terminal prints after a CLI
   command. A reader should not need to run code to know whether it worked.
 - **TypeScript first**: use TypeScript for all programmatic examples. Add a CommonJS
@@ -157,7 +156,7 @@ rules on every page that includes code.
 
 ### What makes a Kozen example practical
 
-A practical example answers "what do I run / write to accomplish X?" — not "what does the
+A practical example answers "what do I run / write to accomplish X?", not "what does the
 API look like in the abstract." Test each example against this checklist:
 
 - [ ] Can a developer copy it directly and run it without changes other than credentials?
@@ -172,6 +171,41 @@ If the answer to any item is no, revise the example before publishing the page.
 
 ## Page type templates
 
+### SEO and discoverability for Home.md and README.md
+
+`Home.md` and `README.md` are the entry point on GitHub, npm, and PyPI. They are also the
+pages indexed by search engines. Write them with both human readers and search indexers in
+mind.
+
+**SEO rules:**
+
+1. **H1 contains the module name and its primary function**: search engines weight H1 heavily.
+   Bad: `# Home`. Good: `# 🚀 Kozen Trigger: MongoDB Change Stream Event Handler`
+2. **First paragraph (under H1, before any H2)**: the lead paragraph. It must contain the primary
+   keyword (module name) and state clearly what problem this solves. One to three sentences.
+   Search engines use this as the page description snippet.
+3. **Problem-solution framing in Why Use This**: start with the pain point the reader feels,
+   then present the module as the solution. This increases click-through and time on page.
+4. **Concrete, specific feature bullets**: "Supports SCRAM and X.509 authentication" ranks
+   better than "Flexible authentication". Specific language signals relevance.
+5. **Links to all pages from Home.md**: internal linking boosts all pages' discoverability
+   and keeps readers on the wiki.
+6. **Do not keyword-stuff**: every sentence must be genuinely useful to a human reader.
+   Write for developers first; good prose naturally contains the right terms.
+
+**Incite exploration: the Home.md tone rule**
+
+`Home.md` must make the reader want to keep reading. Every section should answer an implicit
+question: "Why does this matter to me?" Apply this test to every bullet point and paragraph:
+
+- Does this show a concrete, relatable problem?
+- Does this show that the module solves it specifically, not generically?
+- Does this link to a page where the reader can immediately act on what they just learned?
+
+If a paragraph answers none of those questions, it does not belong on `Home.md`.
+
+---
+
 ### Home.md = README.md parity rule
 
 `Home.md` (GitHub Wiki) and `README.md` (repository root) must contain **identical content**.
@@ -181,11 +215,11 @@ wiki landing page. A developer discovering the module through any of those surfa
 the same high-level overview and be able to navigate to the full documentation from there.
 
 **Workflow:**
-1. Write all other wiki pages first — `POLICY.md` through `Kozen-Integration.md`.
+1. Write all other wiki pages first (`POLICY.md` through `Kozen-Integration.md`).
 2. Write `Home.md` last, once every other page is complete and can be linked to.
 3. Copy the finished `Home.md` content verbatim into `README.md`.
 4. Replace any wiki-relative links in `README.md` with the same absolute GitHub wiki URLs
-   already used in `Home.md` — in practice no change is needed if Mode A conventions were
+   already used in `Home.md`. In practice no change is needed if Mode A conventions were
    followed throughout.
 5. When either file changes in the future, sync the other immediately.
 
@@ -207,7 +241,7 @@ URLs, no adjustment is needed.
 
 `Home.md` is the entry point for developers on GitHub, npm, and PyPI. Keep it minimal:
 a high-level overview that earns the reader's trust and guides them to the right wiki page.
-No API details, no configuration tables, no flag references — those belong on dedicated pages.
+No API details, no configuration tables, no flag references. Those belong on dedicated pages.
 
 **Minimal content rule:** If a sentence on `Home.md` requires the reader to know what a flag
 or interface field does, move that sentence to the appropriate dedicated page and replace it
@@ -215,50 +249,141 @@ with a link.
 
 Required sections (in order):
 
-1. **Module name and one-sentence definition** — what it does and what problem it solves.
-2. **🌟 Key Features** — 4 to 8 bullet points with emojis. Concrete, not generic.
-3. **⚡ Why Use This?** — 2 to 4 sentences. The use case in plain language.
-4. **📦 Installation** — npm install command, minimal .env, first command. Maximum 15 lines.
-5. **📚 References** — links to all other wiki pages, the GitHub repo, npm page, and external docs.
-6. **Disclaimer blockquote** — one line linking to POLICY.md.
+1. **Module name and one-sentence definition**: what it does and what problem it solves.
+2. **🌟 Key Features**: 4 to 8 bullet points with emojis. Concrete, not generic.
+3. **⚡ Why Use This?**: 2 to 4 sentences. The use case in plain language.
+4. **📦 Installation**: npm install command, minimal .env, first command. Maximum 15 lines.
+5. **📚 References**: links to all other wiki pages, the GitHub repo, npm page, and external docs.
+6. **Disclaimer blockquote**: one line linking to POLICY.md.
 7. **Navigation footer**
 
 Do NOT put configuration details, API signatures, or CLI flag tables on Home.md.
 
 ### Get-Started.md
 
-Required sections:
-
-1. **Prerequisites** — Node.js version, required environment variables.
-2. **Installation** — `npm install @scope/module-name`.
-3. **Minimal configuration** — the smallest `.env` or config that makes the module work.
-4. **First command** — one copy-paste CLI invocation that produces visible output.
-5. **Verify it worked** — what to look for in the output to confirm success.
-6. **Next steps** — links to Configuration.md for full options, and CLI/MCP pages.
-7. **Navigation footer**
-
 Get-Started must be completable in under 5 minutes for a developer who has never used Kozen.
+It uses a canonical numbered-step format: every step gets an H3 heading with a semantically
+relevant emoji.
+
+#### Canonical numbered-step template
+
+```markdown
+## 🚀 Simple Demo: Step by Step
+
+Follow these steps to install, configure, and run [Module Name] locally or in your environment.
+
+### 📥 1. Install
+
+Install the module in your project.
+
+```shell
+npm install @kozen/<module-name>
+```
+
+Check the Kozen CLI documentation:
+
+```shell
+npx kozen --action=help
+```
+
+Check the module documentation within Kozen:
+
+```shell
+npx kozen --moduleLoad=@kozen/<module-name> --action=<alias>:help
+```
+
+### [emoji] 2. [Second step: Create the delegate / Create a config / Set credentials]
+
+[One sentence introducing what the reader is about to do and why.]
+
+[Code block with the file path as a comment on the first line]
+
+**Note:** [Explain what the reader should know about this step that is not obvious from the
+code: alternatives, what is required vs optional, what happens if they skip it.]
+
+### 📝 3. Create the env file
+
+Provide connection details and module configuration.
+
+FILE: `/home/user/.env`
+
+```env
+KOZEN_LOG_LEVEL=INFO
+KOZEN_LOG_TYPE=object
+KOZEN_MODULE_LOAD=@kozen/<module-name>
+
+KOZEN_<ALIAS>_<PARAM>=<value>
+...
+```
+
+**Note:** This file is a convenient way to load local environment variables without modifying
+your system configuration. If you prefer, you can define the same variables at the OS level,
+and this file will not be required.
+
+For the full list of options, see [Configuration](<base-url>/wiki/Configuration).
+
+### 🧑‍💻 4. Start the service
+
+[One sentence describing what this command does.]
+
+```shell
+npx kozen --action=<alias>:<action> --envFile=/home/user/.env
+```
+
+**Note:** Include `--envFile=/home/user/.env` only if you want to load local environment
+variables. If all variables are already set in the global environment, this option is not
+required.
+
+### 🔍 5. Observe logs
+
+Confirm startup and see the output when the module processes events.
+
+```
+[Paste a realistic log block here. Use real field values and real flow IDs, no placeholder text.]
+```
+
+**Note:** [Explain what produced these logs, which env var controls verbosity, and whether
+using the native logger is optional or recommended.]
+```
+
+#### Step emoji guide for Get-Started
+
+| Step type | Emoji |
+|---|---|
+| Install / download | 📥 |
+| Create a file (delegate, handler, config) | 🤖 (delegate), 📝 (config/env), 📄 (general file) |
+| Set credentials or authenticate | 🔑 |
+| Start / run / launch | 🧑‍💻 |
+| Verify / observe / check output | 🔍 |
+| Test or validate | ✅ |
+
+Required sections (in order):
+
+1. **Prerequisites**: Node.js version, required external accounts (AWS, MongoDB Atlas, etc.).
+2. **The numbered steps section** (`## 🚀 Simple Demo: Step by Step`) with all steps.
+3. **Next steps**: links to Configuration.md, the CLI page, the MCP page.
+4. **Navigation footer**
 
 ### Configuration.md
 
 Required sections:
 
-1. **Configuration layers** — priority order (CLI flag > env var > .env file > config.json > default). Link to Kozen Engine wiki for engine-level vars; this page only covers module-specific vars.
-2. **Environment variables table** — all `MODULE_*` env vars with: name, CLI equivalent, default, description.
-3. **`.env` file example** — a realistic, copyable example covering the common case.
-4. **`cfg/config.json` snippet** — if the module has standalone config.
-5. **Advanced options** — driver comparisons, special flags, backend-specific settings.
-6. **Security notes** — what must never be committed, how to rotate keys.
+1. **Configuration layers**: priority order (CLI flag > env var > .env file > config.json > default). Link to Kozen Engine wiki for engine-level vars; this page only covers module-specific vars.
+2. **Environment variables table**: all `MODULE_*` env vars with name, CLI equivalent, default, and description.
+3. **`.env` file example**: a realistic, copyable example covering the common case.
+4. **`cfg/config.json` snippet**: include if the module has standalone config.
+5. **Advanced options**: driver comparisons, special flags, backend-specific settings.
+6. **Security notes**: what must never be committed, how to rotate keys.
 7. **Navigation footer**
 
 ### CLI page (`[Module]-via-CLI.md` or `CLI.md`)
 
 Required sections:
 
-1. **Available actions table** — action name, description, required/optional.
-2. **Per-action detail** — for each action: full invocation syntax, all flags, env var fallbacks, example output.
-3. **Full flags reference table** — every flag, env var, default, description.
-4. **Common patterns** — 3 to 5 realistic examples covering different use cases.
+1. **Available actions table**: action name, description, required/optional.
+2. **Per-action detail**: for each action, full invocation syntax, all flags, env var fallbacks, and example output.
+3. **Full flags reference table**: every flag, env var, default, and description.
+4. **Common patterns**: 3 to 5 realistic examples covering different use cases.
 5. **Navigation footer**
 
 Source the action names from `src/controllers/*CLIController.ts` public method names.
@@ -268,10 +393,10 @@ Source the flag names from the controller's `fill()` method and `src/docs/*.txt`
 
 Required sections:
 
-1. **What MCP tools are registered** — tool names and one-line descriptions.
-2. **Per-tool detail** — name, description, full input schema with types and required/optional.
-3. **MCP server configuration** — JSON block for VS Code / Claude Desktop `mcpServers`.
-4. **Usage examples** — 2 to 3 example prompts the user might give an LLM that would trigger these tools.
+1. **What MCP tools are registered**: tool names and one-line descriptions.
+2. **Per-tool detail**: name, description, full input schema with types and required/optional.
+3. **MCP server configuration**: JSON block for VS Code / Claude Desktop `mcpServers`.
+4. **Usage examples**: 2 to 3 example prompts the user might give an LLM that would trigger these tools.
 5. **Navigation footer**
 
 Source tool names from `src/controllers/*MCPController.ts`, the `server.registerTool()` calls.
@@ -283,25 +408,25 @@ For `@kozen/trigger` specifically and any future module that uses the delegate p
 
 Required sections:
 
-1. **What a delegate is** — one-paragraph definition.
-2. **Handler dispatch rules** — the priority order (operation-specific → catch-all).
-3. **Handler name reference table** — all valid export names mapped to MongoDB `operationType`.
-4. **ITriggerTools reference** — every field with type and description.
-5. **ESM and CJS format examples** — complete, runnable delegate files.
-6. **Direct MongoDB access pattern** — using `tools.db` and `tools.collection`.
-7. **Service resolution pattern** — using `tools.assistant?.resolve()`.
-8. **Module system detection rules** — how Kozen chooses ESM vs CJS.
+1. **What a delegate is**: one-paragraph definition.
+2. **Handler dispatch rules**: the priority order (operation-specific → catch-all).
+3. **Handler name reference table**: all valid export names mapped to MongoDB `operationType`.
+4. **ITriggerTools reference**: every field with type and description.
+5. **ESM and CJS format examples**: complete, runnable delegate files.
+6. **Direct MongoDB access pattern**: using `tools.db` and `tools.collection`.
+7. **Service resolution pattern**: using `tools.assistant?.resolve()`.
+8. **Module system detection rules**: how Kozen chooses ESM vs CJS.
 9. **Navigation footer**
 
 ### API page (`API.md` or `Kozen-Module-Development.md`)
 
 Required sections:
 
-1. **All public exports** — code block listing every `import { ... } from '@scope/module'`.
-2. **Module class** — constructor signature, `register()` behaviour, IoC tokens registered.
-3. **Per-interface** — all fields with types, descriptions, and whether required/optional.
-4. **Per-service class** — constructor signature, all public methods with full signatures.
-5. **Programmatic usage** — TypeScript examples: with Kozen IoC, standalone without Kozen.
+1. **All public exports**: code block listing every `import { ... } from '@scope/module'`.
+2. **Module class**: constructor signature, `register()` behaviour, IoC tokens registered.
+3. **Per-interface**: all fields with types, descriptions, and whether required/optional.
+4. **Per-service class**: constructor signature, all public methods with full signatures.
+5. **Programmatic usage**: TypeScript examples with Kozen IoC and standalone without Kozen.
 6. **Navigation footer**
 
 The "all public exports" code block is derived directly from `src/index.ts`. Do not guess.
@@ -312,10 +437,10 @@ This page explains how to load the module into a running Kozen application via `
 
 Required sections:
 
-1. **Module loading** — `--moduleLoad=@scope/module-name` CLI flag.
-2. **IoC token reference** — table of all tokens registered by this module (from configs/*.json).
-3. **Composing with other modules** — example loading two modules together.
-4. **`.env` integration pattern** — KOZEN_MODULE_LOAD env var.
+1. **Module loading**: `--moduleLoad=@scope/module-name` CLI flag.
+2. **IoC token reference**: table of all tokens registered by this module (from configs/*.json).
+3. **Composing with other modules**: example loading two modules together.
+4. **`.env` integration pattern**: `KOZEN_MODULE_LOAD` env var.
 5. **Navigation footer**
 
 ### POLICY.md (Disclaimer and Licence)
@@ -324,13 +449,13 @@ This page is mandatory. It protects the authors legally and informs users of usa
 
 Required sections (in order):
 
-1. **⚖️ [Module Name] Disclaimer and Usage Policy** — H1 with scale emoji.
-2. **Open Source Distribution** — state the licence (MIT, ISC, Apache-2.0 — from package.json). Include the full licence name and a link to the licence text if possible.
-3. **Purpose and Vision** — 2 to 3 sentences on what the project aims to do.
-4. **Officially Maintained Modules** — list of modules maintained by the same team.
-5. **Contributions** — brief note on contribution process.
-6. **Liability Disclaimer** — standard disclaimer: provided as-is, no warranties, authors not liable for damages. Use plain language, not legalese.
-7. **Final Notes** — contact / issues tracker link.
+1. **⚖️ [Module Name] Disclaimer and Usage Policy**: H1 with scale emoji.
+2. **Open Source Distribution**: state the licence (MIT, ISC, Apache-2.0, from package.json). Include the full licence name and a link to the licence text if possible.
+3. **Purpose and Vision**: 2 to 3 sentences on what the project aims to do.
+4. **Officially Maintained Modules**: list of modules maintained by the same team.
+5. **Contributions**: brief note on contribution process.
+6. **Liability Disclaimer**: standard disclaimer: provided as-is, no warranties, authors not liable for damages. Use plain language, not legalese.
+7. **Final Notes**: contact / issues tracker link.
 8. **Navigation footer**
 
 Template for the Liability Disclaimer section:
@@ -353,11 +478,11 @@ recommend thorough testing in non-production environments before deployment.
 
 ### When a References section is required
 
-- **Home.md** — always, with links to all wiki pages + external resources.
-- **Get-Started.md** — always, with links to Configuration and the Kozen Engine wiki.
-- **Delegate.md / API.md** — when citing MongoDB driver documentation or external specs.
-- **POLICY.md** — when citing the licence text or contributing guidelines.
-- **All other pages** — include a References section if the page cites any external resource.
+- **Home.md**: always, with links to all wiki pages and external resources.
+- **Get-Started.md**: always, with links to Configuration and the Kozen Engine wiki.
+- **Delegate.md / API.md**: when citing MongoDB driver documentation or external specs.
+- **POLICY.md**: when citing the licence text or contributing guidelines.
+- **All other pages**: include a References section if the page cites any external resource.
 
 ### Format
 
@@ -366,10 +491,10 @@ Follow the `ks-technical-article-writer` pattern for wiki pages (markdown links 
 ```markdown
 ## 📚 References
 
-- [Kozen Engine Wiki](https://github.com/kozen-labs/engine/wiki) — core framework documentation
-- [MongoDB Change Streams](https://www.mongodb.com/docs/manual/changeStreams/) — official MongoDB documentation
-- [npm: @kozen/trigger](https://www.npmjs.com/package/@kozen/trigger) — package registry entry
-- [Disclaimer and Usage Policy](https://github.com/<org>/<repo>/wiki/POLICY) — usage terms and licence
+- [Kozen Engine Wiki](https://github.com/kozen-labs/engine/wiki): core framework documentation
+- [MongoDB Change Streams](https://www.mongodb.com/docs/manual/changeStreams/): official MongoDB documentation
+- [npm: @kozen/trigger](https://www.npmjs.com/package/@kozen/trigger): package registry entry
+- [Disclaimer and Usage Policy](https://github.com/<org>/<repo>/wiki/POLICY): usage terms and licence
 - [Contributing Guidelines](https://github.com/<org>/<repo>/blob/main/CONTRIBUTING.md)
 ```
 
@@ -387,7 +512,7 @@ Sources to always include on Home.md:
 | Page | What to include |
 |---|---|
 | `POLICY.md` | Full licence notice, liability disclaimer, contribution guidelines |
-| `Home.md` | Blockquote linking to POLICY.md — one line only |
+| `Home.md` | Blockquote linking to POLICY.md (one line only) |
 | `Get-Started.md` | Optional: one-line reference to POLICY.md in the References section |
 | All other pages | No licence text; link to POLICY.md from References only |
 
@@ -421,15 +546,23 @@ If no banner exists, omit the image entirely. Never use a placeholder image.
 - [ ] All CLI action names were verified against the controller's public methods
 - [ ] All env var names were verified against the `src/docs/*.txt` help file
 - [ ] `src/configs/mcp.json` existence was checked before writing an MCP page
-- [ ] No content is duplicated across pages — check for copy-pasted paragraphs
+- [ ] No content is duplicated across pages (check for copy-pasted paragraphs)
 - [ ] Every page in the "Required" column of the practical code examples table has its example
 - [ ] Every code example is complete, runnable, and uses realistic values (no `foo`/`bar`/`test`)
 
 **Format:**
 - [ ] Every page has a navigation footer with correct Previous/Next links
-- [ ] Emojis appear only on H1 and H2 headings
+- [ ] Every page (Home, README, all wiki pages) has emojis on H1 and H2 headings
+- [ ] Get-Started numbered steps use per-step emojis on H3 headings
 - [ ] All internal links use absolute GitHub wiki URLs (Mode A) or relative paths (Mode B)
 - [ ] Every page that cites an external resource has a References section
+- [ ] All `**Note:**` blocks follow the pattern in `references/conventions.md`
+
+**SEO and discoverability (Home.md and README.md only):**
+- [ ] H1 contains the module name and its primary function (not just "Home")
+- [ ] First paragraph under H1 states the problem solved and the solution in 1–3 sentences
+- [ ] "Why Use This?" uses problem-solution framing, not feature listing
+- [ ] Home.md links to every other wiki page from its References section
 
 **Legal:**
 - [ ] POLICY.md exists and includes licence (from package.json `license` field)

@@ -23,7 +23,7 @@ want. The choice affects file locations, link formats, and the Git workflow.
 
 ## The three modes
 
-### Mode A — GitHub Wiki (`*.wiki` repo)
+### Mode A: GitHub Wiki (`*.wiki` repo)
 
 GitHub Wikis are stored in a separate Git repository automatically created alongside every
 GitHub repository. The clone URL is `https://github.com/<org>/<repo>.wiki.git`.
@@ -61,24 +61,24 @@ For the Home page specifically:
 ```
 [Home](https://github.com/kozen-labs/trigger/wiki)
 ```
-Do NOT use relative paths like `./Get-Started.md` — GitHub wiki does not resolve them.
+Do NOT use relative paths like `./Get-Started.md`. GitHub wiki does not resolve them.
 
 **Pros:**
-- Separated from source code — contributors can edit docs without a PR
+- Separated from source code: contributors can edit docs without a PR
 - GitHub provides a built-in table of contents sidebar
 - Zero deployment configuration
 
 **Cons:**
 - Not version-controlled alongside the source code (separate repo)
 - No pull request workflow by default (though you can enable it)
-- Limited styling — plain GitHub markdown only
+- Limited styling: plain GitHub markdown only
 
 **Recommended for:** Public-facing module documentation that should be editable by
 non-developers and browseable on GitHub without any setup.
 
 ---
 
-### Mode B — `docs/` directory (GitHub Pages / static site)
+### Mode B: `docs/` directory (GitHub Pages / static site)
 
 Documentation lives inside the module repository under a `docs/` folder. GitHub Pages
 can serve it directly, or a static site generator (Docusaurus, MkDocs, VitePress) can
@@ -113,7 +113,7 @@ Or root-relative if the site has a known base URL:
 ```
 
 **Pros:**
-- Version-controlled alongside source code — changes to code and docs go in the same PR
+- Version-controlled alongside source code: changes to code and docs go in the same PR
 - Works with static site generators for rich styling, search, and versioning
 - Can be reviewed via pull requests
 
@@ -126,7 +126,7 @@ set up GitHub Pages or a static site.
 
 ---
 
-### Mode C — `tmp/wiki/` (staging / undecided)
+### Mode C: `tmp/wiki/` (staging / undecided)
 
 The user has not decided on a final publication target. Generate files in `tmp/wiki/` so
 they can be reviewed and moved to Mode A or Mode B later.
@@ -143,14 +143,15 @@ organization and repo name are known even if the wiki has not been created yet.
 
 > The files are in `tmp/wiki/` using GitHub Wiki conventions. When you are ready to publish:
 >
-> **Option A — GitHub Wiki:**
+> **Option A: GitHub Wiki**
+>
 > ```bash
 > git clone https://github.com/<org>/<repo>.wiki.git wiki-repo
 > cp tmp/wiki/*.md wiki-repo/
 > cd wiki-repo && git add . && git commit -m "docs: initial wiki" && git push
 > ```
 >
-> **Option B — docs/ folder:**
+> **Option B: docs/ folder**
 > Rename files to lowercase, update relative links, move to `docs/`.
 
 ---
@@ -163,7 +164,7 @@ Ask both questions before generating any file:
 1. Publication mode:
    A) GitHub Wiki (files in tmp/wiki/, later pushed to the *.wiki.git repo)
    B) docs/ directory (files in docs/, versioned with source code)
-   C) tmp/wiki/ staging (undecided — generate with GitHub Wiki conventions for flexibility)
+   C) tmp/wiki/ staging (undecided: generate with GitHub Wiki conventions for flexibility)
 
 2. Disclaimer preference:
    A) POLICY.md linked from every page footer
