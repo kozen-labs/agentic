@@ -2,8 +2,13 @@
 
 Skills and agents for the Kozen Task Execution Framework ecosystem. Install them with the
 Agent Package Manager (APM) or copy them manually to activate context-aware AI assistance
-for every Kozen workflow: building modules, managing secrets, running triggers, and auditing
-MongoDB permissions.
+for every Kozen workflow: building modules, publishing to npm, configuring IoC containers,
+and working with any domain integration — including the MongoDB-focused modules currently
+in the ecosystem.
+
+`@kozen/engine` has no dependency on MongoDB. MongoDB integrations exist as separate,
+optional modules (`@kozen/trigger`, `@kozen/iam-rectification`, `@kozen/secret`). A Kozen
+module can integrate any service, API, or backend.
 
 ---
 

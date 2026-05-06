@@ -354,9 +354,13 @@ The template below matches the patterns used across `@kozen/trigger`, `@kozen/se
     "clean":        "rm -rf dist"
   },
 
-  "keywords": ["kozen", "kozen-module", "mongodb", "my-domain"],
+  "keywords": ["kozen", "kozen-module", "my-domain"],
 
-  "author": "Kozen Labs",
+  "author": {
+    "name":  "Kozen Labs Team",
+    "email": "kozenlabs@gmail.com",
+    "url":   "https://github.com/orgs/kozen-labs/repositories"
+  },
   "license": "Apache-2.0",
 
   "engines": { "node": ">=18" },
@@ -389,12 +393,12 @@ The template below matches the patterns used across `@kozen/trigger`, `@kozen/se
 |---|---|
 | `name` | Must be `@kozen/<module-repo-name>` (scoped). The npm package name is only used in `npm install` commands, `import` statements, and `KOZEN_MODULE_LOAD` values — never in headings or prose |
 | `description` | One-sentence summary of what the module does. Read at runtime into `this.metadata.summary` — keep it accurate |
-| `author` | `"Kozen Labs"` — matches the GitHub organization name. Read at runtime into `this.metadata.author` |
+| `author` | Object form with `name`, `email`, and `url`. Use `"Kozen Labs Team"` / `"kozenlabs@gmail.com"` / `"https://github.com/orgs/kozen-labs/repositories"`. The `name` value is read at runtime into `this.metadata.author` |
 | `license` | `"Apache-2.0"` (SPDX format). Must match the `LICENSE` file in the repository. Read at runtime into `this.metadata.license` |
 | `homepage` | Must point to the GitHub wiki: `https://github.com/kozen-labs/<module>/wiki`. Read at runtime into `this.metadata.uri` — used in `help()` output to tell users where to find the full docs |
 | `bugs.url` | Must point to `https://github.com/kozen-labs/<module>/issues` — the canonical place to report problems |
 | `repository.url` | Must use `git+https://github.com/kozen-labs/<module>.git` format (the `git+` prefix is required by npm) |
-| `keywords` | `"kozen"` and `"kozen-module"` are mandatory for npm discoverability; add domain-specific terms after them |
+| `keywords` | `"kozen"` and `"kozen-module"` are mandatory for npm discoverability; add domain-specific terms after them (e.g., `"mongodb"` only if the module actually integrates MongoDB, `"aws"` only if it integrates AWS) — do not include `"mongodb"` by default |
 | `main` / `types` | Must point to `dist/index.js` / `dist/index.d.ts` (see rootDir rule in section 3) |
 | `files` | `"dist/*"` publishes only compiled output — `src/`, `cfg/`, and `.env` files are excluded |
 | `publishConfig.access` | `"public"` is required for all `@scope/*` packages; without it npm defaults to private and publish fails with a 403 error |
@@ -2062,7 +2066,7 @@ npx kozen --moduleLoad=@scope/greeter --action=greeter:greet --name=Kozen
 | Check | Why |
 |---|---|
 | `description` is a clear one-liner | Read into `this.metadata.summary`; displayed by `npm info` and on npmjs.com |
-| `author` is `"Kozen Labs"` | Read into `this.metadata.author`; displayed in CLI help output |
+| `author` is an object with `name`, `email`, and `url` | `name` is read into `this.metadata.author`; displayed in CLI help output |
 | `license` is `"Apache-2.0"` (SPDX) and matches the `LICENSE` file | Read into `this.metadata.license`; displayed in CLI help output |
 | `keywords` includes `"kozen"` and `"kozen-module"` | Required for npm search discoverability |
 | `homepage` points to `https://github.com/kozen-labs/<module>/wiki` | Read into `this.metadata.uri`; printed by `help()` as the docs URL |
