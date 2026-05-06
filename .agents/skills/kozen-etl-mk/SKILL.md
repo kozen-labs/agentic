@@ -40,7 +40,7 @@ writing and maintaining pipeline boilerplate yourself.
 | Stream MongoDB document changes to downstream Kafka consumers | MK |
 | Feed Kafka events into MongoDB for persistence, archiving, or analytics | KM |
 | Keep a MongoDB collection in sync with an event-sourced Kafka topic | KM with `writeMode=upsert` |
-| Mirror or replicate a MongoDB collection through Kafka to another MongoDB | MK + KM bidirectional |
+| Mirror or replicate a MongoDB collection through Kafka to another MongoDB | MK + KM — two separate services |
 | React to MongoDB changes and produce enriched or filtered Kafka messages | MK with transform delegate |
 | Audit trail: persist all Kafka domain events into MongoDB for querying | KM |
 
@@ -48,7 +48,11 @@ writing and maintaining pipeline boilerplate yourself.
 
 **Use KM when:** Kafka is your event bus and MongoDB is the read/query store or archive.
 
-**Use bidirectional when:** You need two-way sync or a full fanout → persist pattern in one process.
+**Use two separate services (not bidirectional in one process) when you need both directions.**
+Running MK and KM as independent containers is the recommended deployment model — each service
+can be scaled, restarted, or deployed independently without affecting the other. Both share the
+same Docker image; what differs is the env file each container receives. See `references/configuration.md`
+for the complete two-service Docker Compose pattern.
 
 ### When NOT to use this package
 
@@ -89,7 +93,7 @@ Before running any pipeline, verify these conditions:
 | Signal | Reference |
 |---|---|
 | EtlModule, IEtlOptions, IMongoConfig, IKafkaConfig, IMongoToKafkaConfig, IKafkaToMongoConfig, IEtlMongoToKafkaTools, IKafkaDelegate, EtlPipelineService, MongoToKafkaService, KafkaToMongoService, KafkaProducerService, KafkaConsumerService, MongoWriterService, DelegateLoaderService, EtlCLIController, delegate pattern, MK pipeline, KM pipeline, bidirectional, DLQ, retry, at-least-once, etl:start, etl:validate, etl:help, setMessageKey, setMessageHeaders, writeMode, insert upsert, onChange, onMessage, IoC registration, etl-mk:pipeline, etl-mk:kafka-producer, etl-mk:kafka-consumer, etl-mk:mongo-writer, etl-mk:mongo-to-kafka, etl-mk:kafka-to-mongo, ChangeStreamService | `references/api.md` |
-| KOZEN_ETL_MK_SOURCE_URI, KOZEN_ETL_MK_SOURCE_DATABASE, KOZEN_ETL_MK_SOURCE_COLLECTION, KOZEN_ETL_MK_DESTINATION_BROKERS, KOZEN_ETL_MK_DESTINATION_TOPIC, KOZEN_ETL_KM_SOURCE_BROKERS, KOZEN_ETL_KM_SOURCE_TOPIC, KOZEN_ETL_KM_SOURCE_GROUP_ID, KOZEN_ETL_KM_DESTINATION_URI, KOZEN_ETL_KM_DESTINATION_DATABASE, KOZEN_ETL_KM_DESTINATION_COLLECTION, KOZEN_ETL_KM_DESTINATION_WRITE_MODE, KOZEN_ETL_DELEGATE_TYPE, DLQ topic, retry attempts, retry delay, SSL, .env file, demo setup, docker, PM2, validate config | `references/configuration.md` |
+| KOZEN_ETL_MK_SOURCE_URI, KOZEN_ETL_MK_SOURCE_DATABASE, KOZEN_ETL_MK_SOURCE_COLLECTION, KOZEN_ETL_MK_DESTINATION_BROKERS, KOZEN_ETL_MK_DESTINATION_TOPIC, KOZEN_ETL_KM_SOURCE_BROKERS, KOZEN_ETL_KM_SOURCE_TOPIC, KOZEN_ETL_KM_SOURCE_GROUP_ID, KOZEN_ETL_KM_DESTINATION_URI, KOZEN_ETL_KM_DESTINATION_DATABASE, KOZEN_ETL_KM_DESTINATION_COLLECTION, KOZEN_ETL_KM_DESTINATION_WRITE_MODE, KOZEN_ETL_DELEGATE_TYPE, DLQ topic, retry attempts, retry delay, SSL, .env file, .env.mk, .env.km, demo setup, two-service deployment, separate services, shared dockerfile, env file isolation, docker-compose, etl-mk service, etl-km service, Kafka dual listeners, MongoDB replica set Docker, mongo-init, validate per service, PM2, validate config | `references/configuration.md` |
 | delegate design, idempotency, at-least-once implications, error handling in delegates, Kafka message key strategy, consumer group ID, SSL production, DLQ monitoring, writeMode selection, ordering guarantees, silent failure patterns, structured logging, secrets in delegates | `references/best-practices.md` |
 
 ---
