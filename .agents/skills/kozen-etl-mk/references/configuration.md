@@ -349,7 +349,7 @@ volumes:
 KOZEN_ETL_MK_SOURCE_URI=mongodb://mongodb:27017/mydb?replicaSet=rs0
 KOZEN_ETL_MK_SOURCE_DATABASE=mydb
 KOZEN_ETL_MK_SOURCE_COLLECTION=orders
-KOZEN_ETL_MK_DESTINATION_BROKERS=kafka:29092
+KOZEN_ETL_MK_DESTINATION_BROKERS=kafka:9092
 KOZEN_ETL_MK_DESTINATION_TOPIC=orders.events
 KOZEN_ETL_MK_DELEGATE_FILE=/app/delegates/orders.mjs
 # KOZEN_ETL_MK_DLQ_TOPIC=orders.events-dlq
@@ -362,7 +362,7 @@ KOZEN_LOG_TYPE=object
 
 ```bash
 # .env.km — Kafka → MongoDB pipeline only. DO NOT commit this file.
-KOZEN_ETL_KM_SOURCE_BROKERS=kafka:29092
+KOZEN_ETL_KM_SOURCE_BROKERS=kafka:9092
 KOZEN_ETL_KM_SOURCE_TOPIC=orders.events
 KOZEN_ETL_KM_SOURCE_GROUP_ID=etl-orders-group
 KOZEN_ETL_KM_DESTINATION_URI=mongodb://mongodb:27017/mydb?replicaSet=rs0
@@ -378,7 +378,7 @@ KOZEN_LOG_LEVEL=INFO
 KOZEN_LOG_TYPE=object
 ```
 
-**Critical:** `kafka:29092` is the internal container-to-container listener. Use
+**Critical:** `kafka:9092` is the internal container-to-container listener. Use
 `localhost:9092` only from the host machine. See the Kafka dual-listener setup below.
 
 ---
@@ -418,8 +418,8 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -444,7 +444,7 @@ services:
     environment:
       DYNAMIC_CONFIG_ENABLED: "true"
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092   # internal listener, NOT zookeeper
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: zookeeper:2181   # internal listener, NOT zookeeper
     depends_on:
       kafka:
         condition: service_healthy
@@ -525,7 +525,7 @@ volumes:
   mongodb_data:
 ```
 
-**Kafka dual-listener note:** ETL containers use `kafka:29092` (internal listener). Host
+**Kafka dual-listener note:** ETL containers use `kafka:9092` (internal listener). Host
 tools (mongosh, local scripts) use `localhost:9092`. Without the dual-listener setup,
 Kafka's metadata response sends `localhost:9092` to containers, causing connection failures.
 
@@ -607,7 +607,7 @@ mongosh "mongodb://localhost:27017/mydb?replicaSet=rs0" --eval '
 |---|---|---|
 | Service exits: "No delegates defined" | `DELEGATE_FILE` missing from env file | Check `.env.mk` / `.env.km`; run `printenv \| grep KOZEN` inside the container |
 | Both pipelines start in one container | Both `MK_*` and `KM_*` vars in same env file | Split into `.env.mk` and `.env.km`; verify with `printenv \| grep KOZEN` |
-| Kafka connection refused: `localhost:9092` | ETL container resolves `localhost` to itself | Set brokers to `kafka:29092` in env files |
+| Kafka connection refused: `localhost:9092` | ETL container resolves `localhost` to itself | Set brokers to `kafka:9092` in env files |
 | `not primary and secondaryOk=false` | Replica set not initialized | Check `docker compose logs mongo-init`; run `rs.initiate()` manually if needed |
 | `not a replica set` change stream error | MongoDB started without `--replSet` | Add `command: ["--replSet", "rs0", ...]` to the mongodb service |
 | KM consumer never receives messages | Wrong group ID or topic name | Verify in Kafka UI at `http://localhost:8181` → Topics → Consumer Groups |
