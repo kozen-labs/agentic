@@ -402,7 +402,7 @@ volumes:
 KOZEN_ETL_MK_SOURCE_URI=mongodb://mongodb:27017/mydb?replicaSet=rs0
 KOZEN_ETL_MK_SOURCE_DATABASE=mydb
 KOZEN_ETL_MK_SOURCE_COLLECTION=orders
-KOZEN_ETL_MK_DESTINATION_BROKERS=kafka:29092
+KOZEN_ETL_MK_DESTINATION_BROKERS=kafka:9092
 KOZEN_ETL_MK_DESTINATION_TOPIC=orders.events
 KOZEN_ETL_MK_DELEGATE_FILE=/app/delegates/orders.mjs
 # KOZEN_ETL_MK_DLQ_TOPIC=orders.events-dlq
@@ -415,7 +415,7 @@ KOZEN_LOG_TYPE=object
 
 ```bash
 # .env.km — Kafka → MongoDB pipeline only. DO NOT commit this file.
-KOZEN_ETL_KM_SOURCE_BROKERS=kafka:29092
+KOZEN_ETL_KM_SOURCE_BROKERS=kafka:9092
 KOZEN_ETL_KM_SOURCE_TOPIC=orders.events
 KOZEN_ETL_KM_SOURCE_GROUP_ID=etl-orders-group
 KOZEN_ETL_KM_DESTINATION_URI=mongodb://mongodb:27017/mydb?replicaSet=rs0
@@ -431,7 +431,7 @@ KOZEN_LOG_LEVEL=INFO
 KOZEN_LOG_TYPE=object
 ```
 
-**Critical:** `kafka:29092` is the internal container-to-container listener. Use
+**Critical:** `kafka:9092` is the internal container-to-container listener. Use
 `localhost:9092` only from the host machine. See the Kafka dual-listener setup below.
 
 ---
@@ -439,29 +439,15 @@ KOZEN_LOG_TYPE=object
 ### docker-compose.yml
 
 ```yaml
+# docker-compose.yml
 version: '3.8'
 
 services:
 
-  # ── Zookeeper ──────────────────────────────────────────────────────────────────
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
-    hostname: zookeeper
-    container_name: zookeeper
-    ports:
-      - "2181:2181"
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    volumes:
-      - zookeeper_data:/var/lib/zookeeper
-    healthcheck:
-      test: ["CMD", "bash", "-c", "echo ruok | nc localhost 2181"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # ── Kafka (dual listeners: host + container-to-container) ──────────────────────
+  # ── Kafka (KRaft — no Zookeeper) ──────────────────────────────────────────────
+  # Two listeners:
+  #   PLAINTEXT://localhost:9092       → host machine access
+  #   PLAINTEXT_INTERNAL://kafka:9092 → container-to-container access
   kafka:
     image: confluentinc/cp-kafka:7.4.0
     hostname: kafka
@@ -469,26 +455,28 @@ services:
     ports:
       - "9092:9092"
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     volumes:
       - kafka_data:/var/lib/kafka/data
-    depends_on:
-      zookeeper:
-        condition: service_healthy
+    networks:
+      - etl-net
     healthcheck:
       test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
       interval: 15s
       timeout: 10s
       retries: 10
 
-  # ── Kafka UI ───────────────────────────────────────────────────────────────────
+  # ── Kafka UI ──────────────────────────────────────────────────────────────────
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
@@ -497,7 +485,9 @@ services:
     environment:
       DYNAMIC_CONFIG_ENABLED: "true"
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092   # internal listener, NOT zookeeper
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    networks:
+      - etl-net
     depends_on:
       kafka:
         condition: service_healthy
@@ -512,6 +502,8 @@ services:
     command: ["--replSet", "rs0", "--bind_ip_all"]
     volumes:
       - mongodb_data:/data/db
+    networks:
+      - etl-net
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh --quiet
       interval: 10s
@@ -522,6 +514,8 @@ services:
   mongo-init:
     image: mongo:7
     container_name: mongo-init
+    networks:
+      - etl-net
     depends_on:
       mongodb:
         condition: service_healthy
@@ -531,7 +525,6 @@ services:
     restart: "no"
 
   # ── MK service: MongoDB → Kafka ───────────────────────────────────────────────
-  # env_file: .env.mk — only MK variables present; KM pipeline never activates.
   etl-mk:
     build:
       context: .
@@ -542,9 +535,9 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-      mongodb:
-        condition: service_healthy
     restart: on-failure
+    networks:
+      - etl-net
     logging:
       driver: json-file
       options:
@@ -552,7 +545,6 @@ services:
         max-file: "3"
 
   # ── KM service: Kafka → MongoDB ───────────────────────────────────────────────
-  # env_file: .env.km — only KM variables present; MK pipeline never activates.
   etl-km:
     build:
       context: .
@@ -563,9 +555,9 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-      mongodb:
-        condition: service_healthy
     restart: on-failure
+    networks:
+      - etl-net
     logging:
       driver: json-file
       options:
@@ -573,12 +565,15 @@ services:
         max-file: "3"
 
 volumes:
-  zookeeper_data:
   kafka_data:
-  mongodb_data:
+
+networks:
+  etl-net:
+    driver: bridge
+
 ```
 
-**Kafka dual-listener note:** ETL containers use `kafka:29092` (internal listener). Host
+**Kafka dual-listener note:** ETL containers use `kafka:9092` (internal listener). Host
 tools (mongosh, local scripts) use `localhost:9092`. Without the dual-listener setup,
 Kafka's metadata response sends `localhost:9092` to containers, causing connection failures.
 
@@ -660,7 +655,7 @@ mongosh "mongodb://localhost:27017/mydb?replicaSet=rs0" --eval '
 |---|---|---|
 | Service exits: "No delegates defined" | `DELEGATE_FILE` missing from env file | Check `.env.mk` / `.env.km`; run `printenv \| grep KOZEN` inside the container |
 | Both pipelines start in one container | Both `MK_*` and `KM_*` vars in same env file | Split into `.env.mk` and `.env.km`; verify with `printenv \| grep KOZEN` |
-| Kafka connection refused: `localhost:9092` | ETL container resolves `localhost` to itself | Set brokers to `kafka:29092` in env files |
+| Kafka connection refused: `localhost:9092` | ETL container resolves `localhost` to itself | Set brokers to `kafka:9092` in env files |
 | `not primary and secondaryOk=false` | Replica set not initialized | Check `docker compose logs mongo-init`; run `rs.initiate()` manually if needed |
 | `not a replica set` change stream error | MongoDB started without `--replSet` | Add `command: ["--replSet", "rs0", ...]` to the mongodb service |
 | KM consumer never receives messages | Wrong group ID or topic name | Verify in Kafka UI at `http://localhost:8181` → Topics → Consumer Groups |
