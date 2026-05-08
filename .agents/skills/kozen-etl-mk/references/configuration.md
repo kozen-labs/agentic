@@ -271,19 +271,72 @@ Copy the relevant template, fill in credentials and delegate paths, then run.
 
 ---
 
-## Two-service Docker Compose deployment (recommended)
+## Two-service deployment (recommended)
 
-Running MK and KM as **two independent containers** is the standard deployment model.
-Each service can be scaled, restarted, logged, and deployed independently. Both share the
-same Docker image — what differs is the env file each container receives.
+`@kozen/etl-mk` runs as two independent processes: a **producer** (MongoDB → Kafka) and a
+**consumer** (Kafka → MongoDB). **The module name never changes** — only the env file tells
+each process which role to play.
 
-### Why two services instead of one bidirectional process?
+| Process | Kafka role | Env file | Direction |
+|---|---|---|---|
+| `etl-mk` | **Producer** — publishes to Kafka | `.env.mk` | MongoDB → Kafka |
+| `etl-km` | **Consumer** — reads from Kafka | `.env.km` | Kafka → MongoDB |
+
+```bash
+# Producer: MongoDB is source, Kafka is destination
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start --envFile=.env.mk
+
+# Consumer: Kafka is source, MongoDB is destination
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start --envFile=.env.km
+```
+
+The `--moduleLoad` flag is always `@kozen/etl-mk` for both processes. The env file
+activates the pipeline direction — `.env.mk` carries the MongoDB-source variables that
+activate the producer pipeline; `.env.km` carries the Kafka-source variables that activate
+the consumer pipeline.
+
+### Why two processes instead of one bidirectional process?
 
 The pipeline activates a direction when the corresponding `DELEGATE_FILE` env var is set.
 If both `KOZEN_ETL_MK_DELEGATE_FILE` and `KOZEN_ETL_KM_DELEGATE_FILE` are present in the
-same container, both pipelines start in that process — making independent restarts,
-scaling, and failure isolation impossible. The solution: one env file per service, each
-containing only its own pipeline variables.
+same process, both pipelines start — making independent scaling, restarts, and failure
+isolation impossible.
+
+In practice, producer and consumer have different throughput profiles:
+
+- A spike in MongoDB writes increases **producer** load → scale producer instances.
+- A growing Kafka backlog increases **consumer** load → scale consumer instances.
+
+Running them separately lets you scale each independently. Kafka handles partition
+distribution automatically when you run multiple consumer instances with the same
+`KOZEN_ETL_KM_SOURCE_GROUP_ID`.
+
+### Manual deployment (baseline)
+
+The simplest starting point — run both processes directly on the host:
+
+```bash
+# Validate and start the producer (terminal 1)
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate --envFile=.env.mk
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start   --envFile=.env.mk
+
+# Validate and start the consumer (terminal 2)
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate --envFile=.env.km
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start   --envFile=.env.km
+```
+
+To add more consumer instances, start additional processes with the same `.env.km` — Kafka
+assigns partitions automatically across all instances in the same consumer group:
+
+```bash
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start --envFile=.env.km  # instance 2
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start --envFile=.env.km  # instance 3
+```
+
+Docker Compose formalises this model with health checks, restart policies, and one-command
+scaling — covered in the section below.
+
+### Two-service Docker Compose deployment
 
 ### File layout
 
@@ -292,8 +345,8 @@ etl-orders/
 ├── docker-compose.yml    ← full stack (Zookeeper, Kafka, MongoDB, two ETL services)
 ├── Dockerfile            ← shared image for both ETL services
 ├── package.json          ← runtime dependencies (no devDependencies)
-├── .env.mk               ← ONLY MK variables — etl-mk service
-├── .env.km               ← ONLY KM variables — etl-km service
+├── .env.mk               ← ONLY MK variables — etl-mk service — Producer
+├── .env.km               ← ONLY KM variables — etl-km service — Consumer
 └── delegates/
     ├── orders.mjs        ← MK delegate: MongoDB change → Kafka payload
     └── archive.mjs       ← KM delegate: Kafka message → MongoDB document
