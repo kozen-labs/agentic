@@ -1,4 +1,4 @@
----
+﻿---
 name: "@kozen/etl-mk — Best Practices"
 description: >
   Production best practices for @kozen/etl-mk: delegate design (idempotency, error handling,
@@ -312,7 +312,7 @@ KOZEN_MODULE_LOAD=@kozen/secret,@kozen/etl-mk \
 KOZEN_SM_DRIVER=mdb \
 MDB_URI=mongodb+srv://... \
 MDB_MASTER_KEY=<base64-key> \
-npx kozen --action=etl:start --envFile=.env
+npx kozen --action=etl-mk:start --envFile=.env
 ```
 
 ---
@@ -323,14 +323,14 @@ These mistakes cause the pipeline to start but process no events — with no obv
 
 | Mistake | Symptom | Fix |
 |---|---|---|
-| `DELEGATE_FILE` not set | Pipeline starts; no direction is active | Set the env var; run `etl:validate` |
-| Delegate file path is wrong | `etl:start` runs but no events processed; no error logged | Use absolute paths; run `etl:validate` |
+| `DELEGATE_FILE` not set | Pipeline starts; no direction is active | Set the env var; run `etl-mk:validate` |
+| Delegate file path is wrong | `etl-mk:start` runs but no events processed; no error logged | Use absolute paths; run `etl-mk:validate` |
 | Delegate exports no matching handler | Events consumed but nothing published/written | Verify exported function names match operation types |
 | All handlers return `null` | Pipeline runs, DLQ empty, nothing written | Inspect delegate return values with `KOZEN_LOG_LEVEL=DEBUG` |
 | KM consumer group already at latest offset | No messages consumed | Use a new group ID or reset offset via Kafka CLI |
 | MongoDB not a replica set (MK) | `MongoServerError: The $changeStream stage is only supported on replica sets` | Use a replica set or sharded cluster |
 
-**Run `etl:validate` after every configuration change** to catch missing variables before the
+**Run `etl-mk:validate` after every configuration change** to catch missing variables before the
 pipeline starts. Use `KOZEN_LOG_LEVEL=DEBUG` to trace delegate dispatch and payload flow.
 
 ---
@@ -346,7 +346,7 @@ Before deploying `@kozen/etl-mk` to production:
 - [ ] DLQ topic (MK) or collection (KM) exists and is monitored
 
 **Configuration:**
-- [ ] All required env vars set; `etl:validate` exits 0
+- [ ] All required env vars set; `etl-mk:validate` exits 0
 - [ ] Unique, descriptive `CLIENT_ID` per environment
 - [ ] Unique `GROUP_ID` per logical KM consumer pipeline
 - [ ] `KOZEN_STACK=prod` set for log correlation

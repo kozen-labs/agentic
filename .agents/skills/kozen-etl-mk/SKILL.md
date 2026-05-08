@@ -1,10 +1,10 @@
----
+﻿---
 name: kozen-etl-mk
 description: >
   Reference skill for @kozen/etl-mk — a Kozen module that runs bi-directional ETL pipelines
   between MongoDB and Apache Kafka. Covers when and why to use this npm package, prerequisites,
   the MK (MongoDB→Kafka) and KM (Kafka→MongoDB) pipelines, the delegate pattern for transforming
-  data in both directions, all CLI commands (etl:start, etl:validate, etl:help), all environment
+  data in both directions, all CLI commands (etl-mk:start, etl-mk:validate, etl-mk:help), all environment
   variables, IoC service registrations, DLQ routing, retry logic, best practices for production,
   and how to build runnable demos using .env files and ESM delegate files.
 created: 2026-05-06
@@ -92,7 +92,7 @@ Before running any pipeline, verify these conditions:
 
 | Signal | Reference |
 |---|---|
-| EtlModule, IEtlOptions, IMongoConfig, IKafkaConfig, IMongoToKafkaConfig, IKafkaToMongoConfig, IEtlMongoToKafkaTools, IKafkaDelegate, EtlPipelineService, MongoToKafkaService, KafkaToMongoService, KafkaProducerService, KafkaConsumerService, MongoWriterService, DelegateLoaderService, EtlCLIController, delegate pattern, MK pipeline, KM pipeline, bidirectional, DLQ, retry, at-least-once, etl:start, etl:validate, etl:help, setMessageKey, setMessageHeaders, writeMode, insert upsert, onChange, onMessage, IoC registration, etl-mk:pipeline, etl-mk:kafka-producer, etl-mk:kafka-consumer, etl-mk:mongo-writer, etl-mk:mongo-to-kafka, etl-mk:kafka-to-mongo, ChangeStreamService | `references/api.md` |
+| EtlModule, IEtlOptions, IMongoConfig, IKafkaConfig, IMongoToKafkaConfig, IKafkaToMongoConfig, IEtlMongoToKafkaTools, IKafkaDelegate, EtlPipelineService, MongoToKafkaService, KafkaToMongoService, KafkaProducerService, KafkaConsumerService, MongoWriterService, DelegateLoaderService, EtlCLIController, delegate pattern, MK pipeline, KM pipeline, bidirectional, DLQ, retry, at-least-once, etl-mk:start, etl-mk:validate, etl-mk:help, setMessageKey, setMessageHeaders, writeMode, insert upsert, onChange, onMessage, IoC registration, etl-mk:pipeline, etl-mk:kafka-producer, etl-mk:kafka-consumer, etl-mk:mongo-writer, etl-mk:mongo-to-kafka, etl-mk:kafka-to-mongo, ChangeStreamService | `references/api.md` |
 | KOZEN_ETL_MK_SOURCE_URI, KOZEN_ETL_MK_SOURCE_DATABASE, KOZEN_ETL_MK_SOURCE_COLLECTION, KOZEN_ETL_MK_DESTINATION_BROKERS, KOZEN_ETL_MK_DESTINATION_TOPIC, KOZEN_ETL_KM_SOURCE_BROKERS, KOZEN_ETL_KM_SOURCE_TOPIC, KOZEN_ETL_KM_SOURCE_GROUP_ID, KOZEN_ETL_KM_DESTINATION_URI, KOZEN_ETL_KM_DESTINATION_DATABASE, KOZEN_ETL_KM_DESTINATION_COLLECTION, KOZEN_ETL_KM_DESTINATION_WRITE_MODE, KOZEN_ETL_DELEGATE_TYPE, DLQ topic, retry attempts, retry delay, SSL, .env file, .env.mk, .env.km, demo setup, two-service deployment, separate services, shared dockerfile, env file isolation, docker-compose, etl-mk service, etl-km service, Kafka dual listeners, MongoDB replica set Docker, mongo-init, validate per service, PM2, validate config | `references/configuration.md` |
 | delegate design, idempotency, at-least-once implications, error handling in delegates, Kafka message key strategy, consumer group ID, SSL production, DLQ monitoring, writeMode selection, ordering guarantees, silent failure patterns, structured logging, secrets in delegates | `references/best-practices.md` |
 
@@ -134,10 +134,10 @@ KOZEN_ETL_MK_DELEGATE_FILE=./delegates/my-transform.mjs
 
 ```bash
 # Always validate first
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate --envFile=.env
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate --envFile=.env
 
 # Start the pipeline (long-running process)
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:start --envFile=.env
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start --envFile=.env
 ```
 
 The process stays alive, listening for events. Send `SIGINT` (Ctrl+C) to stop gracefully.
@@ -173,8 +173,8 @@ export KOZEN_ETL_MK_DESTINATION_BROKERS=localhost:9092
 export KOZEN_ETL_MK_DESTINATION_TOPIC=orders.events
 export KOZEN_ETL_MK_DELEGATE_FILE=./delegates/orders.mjs
 
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:start
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start
 ```
 
 ### Kafka → MongoDB (KM)
@@ -193,14 +193,14 @@ export KOZEN_ETL_KM_DESTINATION_DATABASE=archive
 export KOZEN_ETL_KM_DESTINATION_COLLECTION=orders_archive
 export KOZEN_ETL_KM_DELEGATE_FILE=./delegates/archive.mjs
 
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:start
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start
 ```
 
 ### Validate configuration without connecting
 
 ```bash
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate
 # Exit 0 = valid. Non-zero = logs each missing variable, then fails.
 ```
 
@@ -221,7 +221,7 @@ Invoke this skill when the user is:
 ## Do & Don't
 
 **Do:**
-- Always run `etl:validate` before `etl:start` in CI/CD — it exits non-zero on missing vars.
+- Always run `etl-mk:validate` before `etl-mk:start` in CI/CD — it exits non-zero on missing vars.
 - Set `KOZEN_ETL_MK_DELEGATE_FILE` to activate MK; omit it entirely to disable MK silently.
 - Return `null` or `undefined` from any delegate handler to skip that event without error.
 - Use `.mjs` for ESM delegates (recommended) and `.cjs` for CommonJS — auto-detected by extension.
@@ -238,4 +238,4 @@ Invoke this skill when the user is:
 - Never omit `setMessageKey()` on MK when ordering matters — without a key, Kafka distributes messages across partitions randomly.
 - Never share a consumer group ID across multiple running pipelines consuming the same topic — they will split the partition load unpredictably.
 - Never run without a DLQ topic in production — an error without DLQ drops the message permanently after max retries.
-- Never skip `etl:validate` when migrating between environments — missing vars produce silent, hard-to-diagnose failures.
+- Never skip `etl-mk:validate` when migrating between environments — missing vars produce silent, hard-to-diagnose failures.

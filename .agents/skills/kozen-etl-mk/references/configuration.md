@@ -1,4 +1,4 @@
----
+﻿---
 name: "@kozen/etl-mk — Configuration & Demo Setup"
 description: >
   All environment variables for @kozen/etl-mk organized by pipeline direction (MK and KM),
@@ -39,7 +39,7 @@ A pipeline direction is activated **only** when its delegate file env var is set
 | Only `KOZEN_ETL_MK_DELEGATE_FILE` is set | MK pipeline runs; KM is idle |
 | Only `KOZEN_ETL_KM_DELEGATE_FILE` is set | KM pipeline runs; MK is idle |
 | Both set | Both pipelines run concurrently |
-| Neither set | Process starts but no pipeline runs (use `etl:validate` to detect) |
+| Neither set | Process starts but no pipeline runs (use `etl-mk:validate` to detect) |
 
 ---
 
@@ -160,8 +160,8 @@ KOZEN_ETL_MK_DLQ_TOPIC=orders.events-dlq
 ### 3. Validate and start
 
 ```bash
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate --envFile=.env.mk-demo
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:start   --envFile=.env.mk-demo
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate --envFile=.env.mk-demo
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start   --envFile=.env.mk-demo
 ```
 
 ---
@@ -212,8 +212,8 @@ KOZEN_ETL_KM_DLQ_TOPIC=orders.events-dlq
 ### 3. Validate and start
 
 ```bash
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate --envFile=.env.km-demo
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:start   --envFile=.env.km-demo
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate --envFile=.env.km-demo
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start   --envFile=.env.km-demo
 ```
 
 ---
@@ -245,14 +245,14 @@ KOZEN_ETL_KM_DELEGATE_FILE=./delegates/archive-km.mjs
 ```
 
 ```bash
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:start --envFile=.env.bidirectional
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start --envFile=.env.bidirectional
 ```
 
 Or using the bundled template:
 ```bash
 cp node_modules/@kozen/etl-mk/cfg/env.bidirectional.example .env
 # Edit .env with your connection strings and delegate paths
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:start --envFile=.env
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start --envFile=.env
 ```
 
 ---
@@ -330,7 +330,7 @@ RUN npm ci --omit=dev
 
 COPY delegates/ ./delegates/
 
-CMD ["npx", "kozen", "--moduleLoad=@kozen/etl-mk", "--action=etl:start"]
+CMD ["npx", "kozen", "--moduleLoad=@kozen/etl-mk", "--action=etl-mk:start"]
 ```
 
 The `command:` in `docker-compose.yml` can override the CMD if needed. Delegates are baked
@@ -484,7 +484,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: etl-mk
-    command: ["npx", "kozen", "--moduleLoad=@kozen/etl-mk", "--action=etl:start"]
+    command: ["npx", "kozen", "--moduleLoad=@kozen/etl-mk", "--action=etl-mk:start"]
     env_file: .env.mk
     depends_on:
       kafka:
@@ -505,7 +505,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: etl-km
-    command: ["npx", "kozen", "--moduleLoad=@kozen/etl-mk", "--action=etl:start"]
+    command: ["npx", "kozen", "--moduleLoad=@kozen/etl-mk", "--action=etl-mk:start"]
     env_file: .env.km
     depends_on:
       kafka:
@@ -541,8 +541,8 @@ docker compose build etl-mk
 docker compose up -d
 
 # Validate each service before starting (in validate mode)
-docker compose run --rm etl-mk npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate
-docker compose run --rm etl-km npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate
+docker compose run --rm etl-mk npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate
+docker compose run --rm etl-km npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate
 
 # Follow logs — MK only
 docker compose logs -f etl-mk
@@ -626,13 +626,13 @@ module.exports = {
     {
       name:   'etl-mk',
       script: 'node_modules/@kozen/engine/dist/bin/kozen.js',
-      args:   '--moduleLoad=@kozen/etl-mk --action=etl:start',
+      args:   '--moduleLoad=@kozen/etl-mk --action=etl-mk:start',
       env_file: '.env.mk'   // only MK variables
     },
     {
       name:   'etl-km',
       script: 'node_modules/@kozen/engine/dist/bin/kozen.js',
-      args:   '--moduleLoad=@kozen/etl-mk --action=etl:start',
+      args:   '--moduleLoad=@kozen/etl-mk --action=etl-mk:start',
       env_file: '.env.km'   // only KM variables
     }
   ]
@@ -650,25 +650,25 @@ pm2 restart etl-mk   # restart only MK without touching KM
 
 ## Validation workflow (CI/CD)
 
-Run `etl:validate` as a pre-flight check for each service before deployment:
+Run `etl-mk:validate` as a pre-flight check for each service before deployment:
 
 ```bash
 # Validate MK pipeline
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate --envFile=.env.mk
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate --envFile=.env.mk
 if [ $? -ne 0 ]; then
   echo "MK configuration invalid — aborting deployment"
   exit 1
 fi
 
 # Validate KM pipeline
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate --envFile=.env.km
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate --envFile=.env.km
 if [ $? -ne 0 ]; then
   echo "KM configuration invalid — aborting deployment"
   exit 1
 fi
 ```
 
-`etl:validate` checks:
+`etl-mk:validate` checks:
 - All required variables present for each active pipeline direction
 - Delegate file paths are resolvable
 - Logs each missing variable before exiting with a non-zero code
