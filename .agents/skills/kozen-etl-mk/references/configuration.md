@@ -1,4 +1,4 @@
----
+﻿---
 name: "@kozen/etl-mk — Configuration & Demo Setup"
 description: >
   All environment variables for @kozen/etl-mk organized by pipeline direction (MK and KM),
@@ -39,7 +39,7 @@ A pipeline direction is activated **only** when its delegate file env var is set
 | Only `KOZEN_ETL_MK_DELEGATE_FILE` is set | MK pipeline runs; KM is idle |
 | Only `KOZEN_ETL_KM_DELEGATE_FILE` is set | KM pipeline runs; MK is idle |
 | Both set | Both pipelines run concurrently |
-| Neither set | Process starts but no pipeline runs (use `etl:validate` to detect) |
+| Neither set | Process starts but no pipeline runs (use `etl-mk:validate` to detect) |
 
 ---
 
@@ -160,8 +160,8 @@ KOZEN_ETL_MK_DLQ_TOPIC=orders.events-dlq
 ### 3. Validate and start
 
 ```bash
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate --envFile=.env.mk-demo
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:start   --envFile=.env.mk-demo
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate --envFile=.env.mk-demo
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start   --envFile=.env.mk-demo
 ```
 
 ---
@@ -212,8 +212,8 @@ KOZEN_ETL_KM_DLQ_TOPIC=orders.events-dlq
 ### 3. Validate and start
 
 ```bash
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate --envFile=.env.km-demo
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:start   --envFile=.env.km-demo
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate --envFile=.env.km-demo
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start   --envFile=.env.km-demo
 ```
 
 ---
@@ -245,14 +245,14 @@ KOZEN_ETL_KM_DELEGATE_FILE=./delegates/archive-km.mjs
 ```
 
 ```bash
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:start --envFile=.env.bidirectional
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start --envFile=.env.bidirectional
 ```
 
 Or using the bundled template:
 ```bash
 cp node_modules/@kozen/etl-mk/cfg/env.bidirectional.example .env
 # Edit .env with your connection strings and delegate paths
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:start --envFile=.env
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start --envFile=.env
 ```
 
 ---
@@ -330,7 +330,7 @@ RUN npm ci --omit=dev
 
 COPY delegates/ ./delegates/
 
-CMD ["npx", "kozen", "--moduleLoad=@kozen/etl-mk", "--action=etl:start"]
+CMD ["npx", "kozen", "--moduleLoad=@kozen/etl-mk", "--action=etl-mk:start"]
 ```
 
 The `command:` in `docker-compose.yml` can override the CMD if needed. Delegates are baked
@@ -349,7 +349,7 @@ volumes:
 KOZEN_ETL_MK_SOURCE_URI=mongodb://mongodb:27017/mydb?replicaSet=rs0
 KOZEN_ETL_MK_SOURCE_DATABASE=mydb
 KOZEN_ETL_MK_SOURCE_COLLECTION=orders
-KOZEN_ETL_MK_DESTINATION_BROKERS=kafka:9092
+KOZEN_ETL_MK_DESTINATION_BROKERS=kafka:29092
 KOZEN_ETL_MK_DESTINATION_TOPIC=orders.events
 KOZEN_ETL_MK_DELEGATE_FILE=/app/delegates/orders.mjs
 # KOZEN_ETL_MK_DLQ_TOPIC=orders.events-dlq
@@ -362,7 +362,7 @@ KOZEN_LOG_TYPE=object
 
 ```bash
 # .env.km — Kafka → MongoDB pipeline only. DO NOT commit this file.
-KOZEN_ETL_KM_SOURCE_BROKERS=kafka:9092
+KOZEN_ETL_KM_SOURCE_BROKERS=kafka:29092
 KOZEN_ETL_KM_SOURCE_TOPIC=orders.events
 KOZEN_ETL_KM_SOURCE_GROUP_ID=etl-orders-group
 KOZEN_ETL_KM_DESTINATION_URI=mongodb://mongodb:27017/mydb?replicaSet=rs0
@@ -378,7 +378,7 @@ KOZEN_LOG_LEVEL=INFO
 KOZEN_LOG_TYPE=object
 ```
 
-**Critical:** `kafka:9092` is the internal container-to-container listener. Use
+**Critical:** `kafka:29092` is the internal container-to-container listener. Use
 `localhost:9092` only from the host machine. See the Kafka dual-listener setup below.
 
 ---
@@ -418,8 +418,8 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://kafka:29092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
@@ -444,7 +444,7 @@ services:
     environment:
       DYNAMIC_CONFIG_ENABLED: "true"
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: zookeeper:2181   # internal listener, NOT zookeeper
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092   # internal listener, NOT zookeeper
     depends_on:
       kafka:
         condition: service_healthy
@@ -484,7 +484,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: etl-mk
-    command: ["npx", "kozen", "--moduleLoad=@kozen/etl-mk", "--action=etl:start"]
+    command: ["npx", "kozen", "--moduleLoad=@kozen/etl-mk", "--action=etl-mk:start"]
     env_file: .env.mk
     depends_on:
       kafka:
@@ -505,7 +505,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: etl-km
-    command: ["npx", "kozen", "--moduleLoad=@kozen/etl-mk", "--action=etl:start"]
+    command: ["npx", "kozen", "--moduleLoad=@kozen/etl-mk", "--action=etl-mk:start"]
     env_file: .env.km
     depends_on:
       kafka:
@@ -525,7 +525,7 @@ volumes:
   mongodb_data:
 ```
 
-**Kafka dual-listener note:** ETL containers use `kafka:9092` (internal listener). Host
+**Kafka dual-listener note:** ETL containers use `kafka:29092` (internal listener). Host
 tools (mongosh, local scripts) use `localhost:9092`. Without the dual-listener setup,
 Kafka's metadata response sends `localhost:9092` to containers, causing connection failures.
 
@@ -541,8 +541,8 @@ docker compose build etl-mk
 docker compose up -d
 
 # Validate each service before starting (in validate mode)
-docker compose run --rm etl-mk npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate
-docker compose run --rm etl-km npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate
+docker compose run --rm etl-mk npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate
+docker compose run --rm etl-km npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate
 
 # Follow logs — MK only
 docker compose logs -f etl-mk
@@ -607,7 +607,7 @@ mongosh "mongodb://localhost:27017/mydb?replicaSet=rs0" --eval '
 |---|---|---|
 | Service exits: "No delegates defined" | `DELEGATE_FILE` missing from env file | Check `.env.mk` / `.env.km`; run `printenv \| grep KOZEN` inside the container |
 | Both pipelines start in one container | Both `MK_*` and `KM_*` vars in same env file | Split into `.env.mk` and `.env.km`; verify with `printenv \| grep KOZEN` |
-| Kafka connection refused: `localhost:9092` | ETL container resolves `localhost` to itself | Set brokers to `kafka:9092` in env files |
+| Kafka connection refused: `localhost:9092` | ETL container resolves `localhost` to itself | Set brokers to `kafka:29092` in env files |
 | `not primary and secondaryOk=false` | Replica set not initialized | Check `docker compose logs mongo-init`; run `rs.initiate()` manually if needed |
 | `not a replica set` change stream error | MongoDB started without `--replSet` | Add `command: ["--replSet", "rs0", ...]` to the mongodb service |
 | KM consumer never receives messages | Wrong group ID or topic name | Verify in Kafka UI at `http://localhost:8181` → Topics → Consumer Groups |
@@ -626,13 +626,13 @@ module.exports = {
     {
       name:   'etl-mk',
       script: 'node_modules/@kozen/engine/dist/bin/kozen.js',
-      args:   '--moduleLoad=@kozen/etl-mk --action=etl:start',
+      args:   '--moduleLoad=@kozen/etl-mk --action=etl-mk:start',
       env_file: '.env.mk'   // only MK variables
     },
     {
       name:   'etl-km',
       script: 'node_modules/@kozen/engine/dist/bin/kozen.js',
-      args:   '--moduleLoad=@kozen/etl-mk --action=etl:start',
+      args:   '--moduleLoad=@kozen/etl-mk --action=etl-mk:start',
       env_file: '.env.km'   // only KM variables
     }
   ]
@@ -650,25 +650,25 @@ pm2 restart etl-mk   # restart only MK without touching KM
 
 ## Validation workflow (CI/CD)
 
-Run `etl:validate` as a pre-flight check for each service before deployment:
+Run `etl-mk:validate` as a pre-flight check for each service before deployment:
 
 ```bash
 # Validate MK pipeline
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate --envFile=.env.mk
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate --envFile=.env.mk
 if [ $? -ne 0 ]; then
   echo "MK configuration invalid — aborting deployment"
   exit 1
 fi
 
 # Validate KM pipeline
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate --envFile=.env.km
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate --envFile=.env.km
 if [ $? -ne 0 ]; then
   echo "KM configuration invalid — aborting deployment"
   exit 1
 fi
 ```
 
-`etl:validate` checks:
+`etl-mk:validate` checks:
 - All required variables present for each active pipeline direction
 - Delegate file paths are resolvable
 - Logs each missing variable before exiting with a non-zero code

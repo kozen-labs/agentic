@@ -1,4 +1,4 @@
----
+﻿---
 name: "@kozen/etl-mk — Public API"
 description: >
   Full API reference for @kozen/etl-mk: all exported types and classes, IEtlOptions,
@@ -382,29 +382,29 @@ Registered as `etl:controller:cli`. Handles `etl:*` CLI actions.
 
 ## CLI commands
 
-### `etl:start` — start the pipeline
+### `etl-mk:start` — start the pipeline
 
 ```bash
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:start
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start
 
 # With explicit .env file
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:start --envFile=.env.production
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:start --envFile=.env.production
 
 # Development (ts-node)
-npx ts-node node_modules/@kozen/engine/dist/bin/kozen.js --action=etl:start
+npx ts-node node_modules/@kozen/engine/dist/bin/kozen.js --action=etl-mk:start
 ```
 
-### `etl:validate` — validate configuration
+### `etl-mk:validate` — validate configuration
 
 ```bash
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:validate
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:validate
 # Exit code 0 = valid; non-zero = missing required variables (logged to stdout)
 ```
 
-### `etl:help` — show CLI help
+### `etl-mk:help` — show CLI help
 
 ```bash
-npx kozen --moduleLoad=@kozen/etl-mk --action=etl:help
+npx kozen --moduleLoad=@kozen/etl-mk --action=etl-mk:help
 ```
 
 ---
@@ -478,7 +478,7 @@ export async function message(msg, tools) {
 Start command:
 ```bash
 KOZEN_MODULE_LOAD=@kozen/secret,@kozen/etl-mk \
-  npx kozen --action=etl:start
+  npx kozen --action=etl-mk:start
 ```
 
 ### Architecture flow
